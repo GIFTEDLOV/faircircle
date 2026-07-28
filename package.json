@@ -9,6 +9,7 @@
     "build:frontend": "pnpm --dir frontend build",
     "compile:contracts": "pnpm --dir contracts compile",
     "test:contracts": "pnpm --dir contracts test",
+    "check:size": "pnpm --dir contracts check:size",
     "demo:quiet-budget": "pnpm --dir contracts demo:quiet-budget",
     "demo:fair-split": "pnpm --dir contracts demo:fair-split",
     "demo:private-circle": "pnpm --dir contracts demo:private-circle",

@@ -7,6 +7,7 @@
     "clean": "hardhat clean",
     "compile": "hardhat compile",
     "test": "hardhat test",
+    "check:size": "hardhat run scripts/check-contract-size.ts",
     "demo:quiet-budget": "hardhat test scripts/demo-quiet-budget.ts",
     "demo:fair-split": "hardhat test scripts/demo-fair-split.ts",
     "demo:private-circle": "hardhat test scripts/demo-private-circle.ts",
