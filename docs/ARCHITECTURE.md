@@ -70,7 +70,7 @@ When blockchain work begins, keep integration concerns separate from presentatio
 
 `ConfidentialPiggyBank.sol` is retained as a local Nox smoke contract. It proves encrypted deposit, withdrawal, balance, decryption, and ACL behavior.
 
-`FairCircle.sol` is the Phase 1 product contract. It implements shared room foundations and QuietBudget:
+`FairCircle.sol` is the product contract. It implements shared room foundations, QuietBudget, and FairSplit:
 
 - rooms use sequential IDs;
 - members and options are fixed at creation;
@@ -78,8 +78,12 @@ When blockchain work begins, keep integration concerns separate from presentatio
 - aggregate capacity is updated with Nox encrypted arithmetic;
 - affordability handles are computed with encrypted comparison;
 - public affordability is finalized only through Nox public-decryption proofs.
+- equal-split shares are calculated immediately from public total/member count and stored as encrypted handles;
+- capacity-weighted split feasibility is publicly proven before encrypted proportional shares are calculated.
 
 The contract uses bounded loops only over the product limits of 8 members and 4 options.
+
+FairSplit shares reuse the room member list and per-member encrypted handle mappings. Equal split is finalized immediately. Capacity-weighted split moves from `CollectingInputs` to `ReadyForDecryption` after all capacities are submitted, then to `Finalized` after public feasibility proof validation.
 
 ## Data Model Direction
 

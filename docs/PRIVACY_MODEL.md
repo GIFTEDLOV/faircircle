@@ -67,3 +67,58 @@ The chain still exposes:
 - final affordability booleans.
 
 FairCircle does not hide wallet identity, network activity, or group membership in this phase.
+
+## FairSplit Privacy
+
+### Equal Split
+
+Equal split keeps assigned share handles access-controlled, but the share values are inferable from public data:
+
+- total cost is public;
+- member count is public;
+- member order is public;
+- rounding policy is public.
+
+Therefore equal split provides handle-level access control and consistent contract behavior, not meaningful monetary secrecy for the share amounts.
+
+### Capacity-Weighted Split
+
+Capacity-weighted split protects private capacity inputs and assigned shares.
+
+Individual capacity:
+
+- submitted as `externalEuint256`;
+- usable by the contract;
+- decryptable by the submitting member;
+- not decryptable by the organizer unless the organizer is that member.
+
+Aggregate capacity:
+
+- encrypted;
+- contract-only ACL;
+- not decryptable by organizer, members, or outsiders.
+
+Feasibility:
+
+- encrypted result from `Nox.ge(aggregateCapacity, encryptedTotalCost)`;
+- marked publicly decryptable;
+- plaintext stored only after a valid public-decryption proof.
+
+Assigned share:
+
+- encrypted;
+- contract plus assigned-member ACL;
+- not decryptable by other members, outsiders, or organizer unless they are the assigned member.
+
+The public feasibility boolean leaks whether the aggregate private capacity can cover the public total cost. Final shares reveal each member's assigned amount to that member only, but member addresses and timing remain public.
+
+## FairSplit Proof Flow
+
+1. Members submit encrypted capacities.
+2. The last submission triggers encrypted feasibility evaluation.
+3. A Nox public-decryption proof is generated for the feasibility handle.
+4. `finalizeSplitFeasibility` validates the proof.
+5. If feasible, encrypted proportional shares are calculated and ACLs are restored.
+6. If infeasible, shares are not created.
+
+FairSplit can later be reused inside Plan Together after a QuietBudget option has been selected.

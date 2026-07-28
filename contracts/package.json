@@ -8,6 +8,7 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "demo:quiet-budget": "hardhat test scripts/demo-quiet-budget.ts",
+    "demo:fair-split": "hardhat test scripts/demo-fair-split.ts",
     "deploy:piggy-bank": "hardhat run scripts/deploy-piggy-bank.ts"
   },
   "devDependencies": {
