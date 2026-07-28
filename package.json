@@ -9,6 +9,7 @@
     "build:frontend": "pnpm --dir frontend build",
     "compile:contracts": "pnpm --dir contracts compile",
     "test:contracts": "pnpm --dir contracts test",
+    "demo:quiet-budget": "pnpm --dir contracts demo:quiet-budget",
     "verify": "pnpm lint:frontend && pnpm build:frontend && pnpm compile:contracts && pnpm test:contracts"
   }
 }

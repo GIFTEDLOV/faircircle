@@ -1,6 +1,6 @@
 # FairCircle Contracts
 
-This workspace proves the local iExec Nox toolchain before FairCircle business contracts are added.
+This workspace contains the local iExec Nox contract foundation and the Phase 1 FairCircle QuietBudget contract.
 
 ## Stack
 
@@ -32,7 +32,9 @@ pnpm test
 pnpm deploy:piggy-bank
 ```
 
-## Smoke Scope
+## Contracts
+
+### `ConfidentialPiggyBank`
 
 `ConfidentialPiggyBank` is not a FairCircle business contract. It is a local toolchain smoke contract that exercises:
 
@@ -42,5 +44,37 @@ pnpm deploy:piggy-bank
 - encrypted balance handles;
 - owner-only access;
 - owner and contract ACL restoration after encrypted operations.
+
+### `FairCircle`
+
+`FairCircle` currently implements shared room foundations and QuietBudget only.
+
+QuietBudget lets a group compare fixed public option costs against privately submitted encrypted capacities. Individual capacities and aggregate capacity remain encrypted; final public affordability booleans are stored only after valid Nox public-decryption proofs.
+
+Run the local demo:
+
+```bash
+pnpm demo:quiet-budget
+```
+
+The demo deploys `FairCircle`, creates a three-member QuietBudget room, submits encrypted capacities `40`, `80`, and `100`, finalizes options `150`, `220`, and `250`, and prints `true, true, false`.
+
+## Privacy Scope
+
+QuietBudget public data:
+
+- room title, organizer, members, deadline, and option costs;
+- submission state;
+- final affordability booleans.
+
+QuietBudget encrypted data:
+
+- individual capacities;
+- aggregate capacity;
+- intermediate affordability handles.
+
+Individual capacities are decryptable only by the submitting member. Aggregate capacity is usable only by the contract. Affordability handles are marked publicly decryptable, but public booleans are finalized only after proof validation.
+
+This is confidentiality, not wallet anonymity: addresses, participation, and timing remain public.
 
 No real private key is required for local compile or test. Copy `.env.example` to `.env` only when a future manual deployment task needs environment-specific values, and never commit secrets.

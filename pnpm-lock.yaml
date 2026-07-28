@@ -10,6 +10,9 @@ importers:
 
   contracts:
     devDependencies:
+      '@iexec-nox/handle':
+        specifier: 0.1.0-beta.13
+        version: 0.1.0-beta.13(ethers@6.17.0)(graphql@16.14.2)(viem@2.55.10(typescript@5.8.3)(zod@3.25.76))
       '@iexec-nox/nox-confidential-contracts':
         specifier: 0.2.2
         version: 0.2.2
@@ -3264,6 +3267,15 @@ snapshots:
   '@humanwhocodes/module-importer@1.0.1': {}
 
   '@humanwhocodes/retry@0.4.3': {}
+
+  '@iexec-nox/handle@0.1.0-beta.13(ethers@6.17.0)(graphql@16.14.2)(viem@2.55.10(typescript@5.8.3)(zod@3.25.76))':
+    dependencies:
+      graphql-request: 7.4.0(graphql@16.14.2)
+    optionalDependencies:
+      ethers: 6.17.0
+      viem: 2.55.10(typescript@5.8.3)(zod@3.25.76)
+    transitivePeerDependencies:
+      - graphql
 
   '@iexec-nox/handle@0.1.0-beta.13(ethers@6.17.0)(graphql@16.14.2)(viem@2.55.8(typescript@5.8.3)(zod@3.25.76))':
     dependencies:

@@ -12,6 +12,8 @@ FairCircle currently uses a single Next.js application in `frontend/`.
 
 The app is frontend-only in this phase. It presents routes, product structure, and empty states without pretending that live group, balance, transaction, wallet, or computation data exists.
 
+Contracts now live in `contracts/` as a separate pnpm workspace package. The frontend remains frozen as scaffold while functional contract work proceeds.
+
 ## Directory Shape
 
 ```text
@@ -36,6 +38,12 @@ frontend/
     lib/
       content.ts
       utils.ts
+contracts/
+  contracts/
+    ConfidentialPiggyBank.sol
+    FairCircle.sol
+  test/
+  scripts/
 ```
 
 ## Frontend Architecture
@@ -57,6 +65,21 @@ When blockchain work begins, keep integration concerns separate from presentatio
 - Smart-contract calls should be isolated behind typed functions.
 - UI pages should consume plain product states such as `draft`, `waiting for members`, `ready`, or `complete`.
 - Privacy-sensitive implementation details should not appear in consumer-facing copy.
+
+## Contract Architecture
+
+`ConfidentialPiggyBank.sol` is retained as a local Nox smoke contract. It proves encrypted deposit, withdrawal, balance, decryption, and ACL behavior.
+
+`FairCircle.sol` is the Phase 1 product contract. It implements shared room foundations and QuietBudget:
+
+- rooms use sequential IDs;
+- members and options are fixed at creation;
+- individual capacity handles are stored per member;
+- aggregate capacity is updated with Nox encrypted arithmetic;
+- affordability handles are computed with encrypted comparison;
+- public affordability is finalized only through Nox public-decryption proofs.
+
+The contract uses bounded loops only over the product limits of 8 members and 4 options.
 
 ## Data Model Direction
 
