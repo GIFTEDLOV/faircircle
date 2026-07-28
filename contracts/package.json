@@ -1,0 +1,24 @@
+{
+  "name": "@faircircle/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "clean": "hardhat clean",
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:piggy-bank": "hardhat run scripts/deploy-piggy-bank.ts"
+  },
+  "devDependencies": {
+    "@iexec-nox/nox-confidential-contracts": "0.2.2",
+    "@iexec-nox/nox-hardhat-plugin": "0.1.0",
+    "@iexec-nox/nox-protocol-contracts": "0.2.4",
+    "@nomicfoundation/hardhat-ethers": "4.0.15",
+    "@nomicfoundation/hardhat-toolbox-viem": "5.0.7",
+    "@types/node": "26.1.2",
+    "dotenv": "17.4.2",
+    "hardhat": "3.11.1",
+    "typescript": "5.8.3",
+    "viem": "2.55.10"
+  }
+}

@@ -1,0 +1,34 @@
+# dependencies
+node_modules/
+**/node_modules/
+
+# build outputs
+**/.next/
+**/out/
+**/build/
+**/dist/
+**/artifacts/
+**/cache/
+**/coverage/
+**/typechain-types/
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env and secrets
+.env
+.env.*
+!.env.example
+*.pem
+
+# OS/editor
+.DS_Store
+Thumbs.db
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts

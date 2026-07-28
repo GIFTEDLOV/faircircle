@@ -1,0 +1,14 @@
+{
+  "name": "faircircle",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.0.9",
+  "scripts": {
+    "dev:frontend": "pnpm --dir frontend dev",
+    "lint:frontend": "pnpm --dir frontend lint",
+    "build:frontend": "pnpm --dir frontend build",
+    "compile:contracts": "pnpm --dir contracts compile",
+    "test:contracts": "pnpm --dir contracts test",
+    "verify": "pnpm lint:frontend && pnpm build:frontend && pnpm compile:contracts && pnpm test:contracts"
+  }
+}
