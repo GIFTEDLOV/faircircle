@@ -2,7 +2,7 @@
 
 ## Phase 1 Scope
 
-`FairCircle.sol` currently implements shared room foundations, QuietBudget, and FairSplit. Private Circle and Plan Together orchestration are not implemented yet.
+`FairCircle.sol` currently implements shared room foundations, QuietBudget, FairSplit, and Private Circle. Plan Together orchestration is not implemented yet.
 
 ## QuietBudget Rooms
 
@@ -68,7 +68,7 @@ No event emits individual capacity plaintext or aggregate capacity plaintext.
 
 ## Verification Target
 
-`ConfidentialPiggyBank.sol` remains a smoke contract for the Nox toolchain. `FairCircle.sol` is the Phase 1 product contract.
+`ConfidentialPiggyBank.sol` remains a smoke contract for the Nox toolchain. `FairCircle.sol` is the product contract for the implemented modes.
 
 ## FairSplit
 
@@ -120,3 +120,59 @@ The integer-division remainder is assigned to the first listed member. Each shar
 `FairCircle.MAX_SUPPORTED_AMOUNT` is `1e36` token base units. Public total costs must be non-zero and at or below this limit.
 
 Submitted capacities are encrypted, so the contract cannot check their plaintext amount without breaking confidentiality. The limit is documented for clients and future frontends; capacity validation can be enforced before encryption by client-side and server-side policy, and future Nox flows may add private range checks.
+
+## Private Circle
+
+Private Circle supports confidential ERC-7984 token collections. A room can be open to anyone or invite-only with 2 to 8 listed contributors.
+
+Public inputs:
+
+- title;
+- confidential token address;
+- recipient address;
+- optional public target;
+- deadline;
+- collection access mode;
+- invited members for invite-only rooms.
+
+Encrypted state:
+
+- each contribution receipt;
+- each contributor's cumulative contribution;
+- collection aggregate;
+- target-reached handle when a public target is configured;
+- withdrawal amount and withdrawal success handle.
+
+### Contribution Flow
+
+Contributors send confidential tokens with `confidentialTransferAndCall`, passing the room ID as callback data. The callback accepts only the room's configured confidential token, only while the collection is open, only before the deadline, and only from invited members for invite-only rooms.
+
+The contract stores the transferred encrypted amount as a contribution receipt, updates the contributor's cumulative contribution, and updates the encrypted collection aggregate. A public-decryptable positivity handle is created so anyone can finalize whether the contribution was accepted without revealing the amount.
+
+Public contribution status exposes:
+
+- verified contribution count;
+- unique verified contributor count;
+- whether an account has a verified contribution.
+
+It does not expose individual contribution amounts or the aggregate plaintext amount.
+
+### Target Status
+
+If a public target is configured, each accepted callback updates an encrypted target comparison:
+
+```text
+target reached = collection aggregate >= public target
+```
+
+The comparison handle is publicly decryptable. Finalization stores only the public target status and version, so new contributions invalidate the previous finalized target result until the latest version is finalized.
+
+### Withdrawal
+
+The organizer may close a collection, then request withdrawal after at least one positive contribution has been finalized. The contract transfers the encrypted aggregate to the configured recipient and creates a public-decryptable success handle. Finalizing a successful withdrawal marks the collection withdrawn and the room finalized.
+
+The recipient and organizer receive ACL access to the encrypted withdrawal amount. The collection aggregate is reset after successful finalization.
+
+### Cancellation
+
+The organizer may cancel a Private Circle only while it is still open and before any contribution callback has been received. Once a callback arrives, cancellation is blocked so funds must move through close and withdrawal.

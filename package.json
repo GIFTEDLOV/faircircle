@@ -11,6 +11,7 @@
     "test:contracts": "pnpm --dir contracts test",
     "demo:quiet-budget": "pnpm --dir contracts demo:quiet-budget",
     "demo:fair-split": "pnpm --dir contracts demo:fair-split",
+    "demo:private-circle": "pnpm --dir contracts demo:private-circle",
     "verify": "pnpm lint:frontend && pnpm build:frontend && pnpm compile:contracts && pnpm test:contracts"
   }
 }

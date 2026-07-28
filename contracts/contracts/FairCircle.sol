@@ -7,8 +7,13 @@ import {
     euint256,
     externalEuint256
 } from "@iexec-nox/nox-protocol-contracts/contracts/sdk/Nox.sol";
+import {IERC7984} from "@iexec-nox/nox-confidential-contracts/contracts/interfaces/IERC7984.sol";
+import {
+    IERC7984Receiver
+} from "@iexec-nox/nox-confidential-contracts/contracts/interfaces/IERC7984Receiver.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-contract FairCircle {
+contract FairCircle is IERC7984Receiver {
     uint8 public constant MIN_MEMBERS = 2;
     uint8 public constant MAX_MEMBERS = 8;
     uint8 public constant MIN_OPTIONS = 1;
@@ -34,6 +39,19 @@ contract FairCircle {
         CapacityWeighted
     }
 
+    enum CollectionAccess {
+        Open,
+        InviteOnly
+    }
+
+    enum CollectionStatus {
+        Open,
+        Closed,
+        WithdrawalPending,
+        Withdrawn,
+        Cancelled
+    }
+
     struct RoomView {
         uint256 id;
         string title;
@@ -45,6 +63,39 @@ contract FairCircle {
         uint8 submissionCount;
         uint8 optionCount;
         uint8 finalizedOptionCount;
+    }
+
+    struct PrivateCircleView {
+        uint256 id;
+        string title;
+        address organizer;
+        address confidentialToken;
+        address recipient;
+        uint256 publicTarget;
+        uint64 deadline;
+        CollectionAccess access;
+        CollectionStatus collectionStatus;
+        uint256 verifiedContributionCount;
+        uint256 uniqueContributorCount;
+        uint64 targetVersion;
+    }
+
+    struct ContributionView {
+        uint256 id;
+        uint256 roomId;
+        address contributor;
+        bool finalized;
+        bool accepted;
+    }
+
+    struct Contribution {
+        bool exists;
+        uint256 roomId;
+        address contributor;
+        euint256 receipt;
+        ebool positiveHandle;
+        bool finalized;
+        bool accepted;
     }
 
     struct Room {
@@ -73,15 +124,39 @@ contract FairCircle {
         bool publicSplitFeasible;
         bool splitSharesReady;
         address roundingRecipient;
+        CollectionAccess collectionAccess;
+        CollectionStatus collectionStatus;
+        address confidentialToken;
+        address recipient;
+        uint256 publicTarget;
+        euint256 encryptedTarget;
+        euint256 collectionAggregate;
+        ebool collectionTargetHandle;
+        uint64 collectionTargetVersion;
+        uint64 finalizedTargetVersion;
+        bool collectionTargetFinalized;
+        bool publicTargetReached;
+        bool collectionCallbackReceived;
+        uint256 verifiedContributionCount;
+        uint256 uniqueContributorCount;
+        bool withdrawalRequested;
+        bool withdrawalFinalized;
+        euint256 withdrawalHandle;
+        ebool withdrawalSuccessHandle;
         mapping(address account => bool) isMember;
         mapping(address account => bool) submitted;
         mapping(address account => euint256) capacities;
         mapping(address account => euint256) shares;
+        mapping(address account => euint256) cumulativeContributions;
+        mapping(address account => bool) hasVerifiedContribution;
     }
 
     uint256 public nextRoomId = 1;
+    uint256 public nextContributionId = 1;
 
     mapping(uint256 roomId => Room) private rooms;
+    mapping(uint256 contributionId => Contribution) private contributions;
+    bool private locked;
 
     error InvalidRoomId(uint256 roomId);
     error InvalidMode(RoomMode mode);
@@ -111,6 +186,29 @@ contract FairCircle {
     error SplitFeasibilityAlreadyFinalized();
     error SharesNotReady(uint256 roomId);
     error ZeroAggregateCapacity(uint256 roomId);
+    error InvalidToken(address token);
+    error InvalidRecipient(address recipient);
+    error InvalidTarget(uint256 target);
+    error InvalidCollectionMembers(uint256 count);
+    error CollectionNotOpen(CollectionStatus status);
+    error CollectionClosed(uint256 roomId);
+    error UnauthorizedCallbackToken(address token);
+    error InvalidCallbackData();
+    error InvalidContributionId(uint256 contributionId);
+    error ContributionAlreadyFinalized(uint256 contributionId);
+    error NotContributor(address caller);
+    error ContributionNotAvailable(address account);
+    error TargetNotConfigured(uint256 roomId);
+    error TargetNotReady(uint256 roomId);
+    error TargetAlreadyFinalized(uint256 roomId, uint64 version);
+    error CollectionHasContributions(uint256 roomId);
+    error WithdrawalNotAllowed(uint256 roomId);
+    error ZeroContributionCollection(uint256 roomId);
+    error WithdrawalAlreadyRequested(uint256 roomId);
+    error WithdrawalNotRequested(uint256 roomId);
+    error WithdrawalAlreadyFinalized(uint256 roomId);
+    error WithdrawalFailed(uint256 roomId);
+    error ReentrantCall();
 
     event RoomCreated(
         uint256 indexed roomId,
@@ -142,6 +240,44 @@ contract FairCircle {
     event SplitFeasibilityReady(uint256 indexed roomId);
     event SplitFeasibilityFinalized(uint256 indexed roomId, bool feasible);
     event SharesCalculated(uint256 indexed roomId);
+    event PrivateCircleCreated(
+        uint256 indexed roomId,
+        string title,
+        address indexed organizer,
+        address indexed confidentialToken,
+        address recipient,
+        CollectionAccess access,
+        uint64 deadline,
+        bool hasTarget
+    );
+    event ContributionReceived(
+        uint256 indexed roomId,
+        uint256 indexed contributionId,
+        address indexed contributor
+    );
+    event ContributionFinalized(
+        uint256 indexed roomId,
+        uint256 indexed contributionId,
+        address indexed contributor,
+        bool accepted,
+        uint256 verifiedContributionCount,
+        uint256 uniqueContributorCount
+    );
+    event CollectionTargetReady(uint256 indexed roomId, uint64 indexed version);
+    event CollectionTargetFinalized(uint256 indexed roomId, uint64 indexed version, bool reached);
+    event PrivateCircleClosed(uint256 indexed roomId);
+    event CollectionWithdrawalRequested(uint256 indexed roomId, address indexed recipient);
+    event CollectionWithdrawn(uint256 indexed roomId, address indexed recipient);
+    event PrivateCircleCancelled(uint256 indexed roomId);
+
+    modifier nonReentrant() {
+        if (locked) {
+            revert ReentrantCall();
+        }
+        locked = true;
+        _;
+        locked = false;
+    }
 
     function createQuietBudgetRoom(
         string calldata title,
@@ -288,6 +424,22 @@ contract FairCircle {
         if (msg.sender != room.organizer) {
             revert NotOrganizer(msg.sender);
         }
+
+        if (room.mode == RoomMode.PrivateCircle) {
+            if (room.collectionStatus != CollectionStatus.Open) {
+                revert CollectionNotOpen(room.collectionStatus);
+            }
+            if (room.collectionCallbackReceived) {
+                revert CollectionHasContributions(roomId);
+            }
+
+            room.collectionStatus = CollectionStatus.Cancelled;
+            room.status = RoomStatus.Cancelled;
+            emit PrivateCircleCancelled(roomId);
+            emit RoomCancelled(roomId);
+            return;
+        }
+
         if (room.status != RoomStatus.CollectingInputs) {
             revert CancellationClosed(room.status);
         }
@@ -448,6 +600,287 @@ contract FairCircle {
         emit RoomFinalized(roomId);
     }
 
+    function createPrivateCircleRoom(
+        string calldata title,
+        address confidentialToken,
+        address recipient,
+        uint256 publicTarget,
+        uint64 deadline,
+        CollectionAccess access,
+        address[] calldata invitedMembers
+    ) external returns (uint256 roomId) {
+        _validateConfidentialToken(confidentialToken);
+        if (recipient == address(0)) {
+            revert InvalidRecipient(recipient);
+        }
+        if (publicTarget > MAX_SUPPORTED_AMOUNT) {
+            revert InvalidTarget(publicTarget);
+        }
+        if (deadline <= block.timestamp) {
+            revert InvalidDeadline(deadline);
+        }
+        if (access == CollectionAccess.InviteOnly) {
+            if (invitedMembers.length < MIN_MEMBERS || invitedMembers.length > MAX_MEMBERS) {
+                revert InvalidCollectionMembers(invitedMembers.length);
+            }
+            _validateMembers(invitedMembers);
+        } else if (invitedMembers.length != 0) {
+            revert InvalidCollectionMembers(invitedMembers.length);
+        }
+
+        roomId = nextRoomId;
+        nextRoomId += 1;
+
+        Room storage room = rooms[roomId];
+        room.exists = true;
+        room.title = title;
+        room.organizer = msg.sender;
+        room.mode = RoomMode.PrivateCircle;
+        room.status = RoomStatus.CollectingInputs;
+        room.submissionDeadline = deadline;
+        room.memberCount = uint8(invitedMembers.length);
+        room.collectionAccess = access;
+        room.collectionStatus = CollectionStatus.Open;
+        room.confidentialToken = confidentialToken;
+        room.recipient = recipient;
+        room.publicTarget = publicTarget;
+        room.collectionAggregate = Nox.toEuint256(0);
+        _restoreCollectionAggregateAcl(room);
+
+        if (publicTarget != 0) {
+            room.encryptedTarget = Nox.toEuint256(publicTarget);
+            Nox.allowThis(room.encryptedTarget);
+        }
+
+        for (uint256 i = 0; i < invitedMembers.length; i += 1) {
+            address member = invitedMembers[i];
+            room.members.push(member);
+            room.isMember[member] = true;
+        }
+
+        emit PrivateCircleCreated(
+            roomId,
+            title,
+            msg.sender,
+            confidentialToken,
+            recipient,
+            access,
+            deadline,
+            publicTarget != 0
+        );
+    }
+
+    function onConfidentialTransferReceived(
+        address,
+        address from,
+        euint256 actualTransferredAmount,
+        bytes calldata data
+    ) external returns (ebool) {
+        if (data.length != 32) {
+            revert InvalidCallbackData();
+        }
+
+        uint256 roomId = abi.decode(data, (uint256));
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+
+        if (msg.sender != room.confidentialToken) {
+            revert UnauthorizedCallbackToken(msg.sender);
+        }
+        if (room.collectionStatus != CollectionStatus.Open) {
+            revert CollectionNotOpen(room.collectionStatus);
+        }
+        if (block.timestamp >= room.submissionDeadline) {
+            revert SubmissionClosed(roomId);
+        }
+        if (room.collectionAccess == CollectionAccess.InviteOnly && !room.isMember[from]) {
+            revert NotMember(from);
+        }
+
+        euint256 encryptedZero = Nox.toEuint256(0);
+        Nox.allowThis(encryptedZero);
+        ebool positive = Nox.gt(actualTransferredAmount, encryptedZero);
+        euint256 effectiveAmount = Nox.select(positive, actualTransferredAmount, encryptedZero);
+
+        uint256 contributionId = nextContributionId;
+        nextContributionId += 1;
+
+        room.collectionCallbackReceived = true;
+        room.cumulativeContributions[from] = Nox.add(
+            room.cumulativeContributions[from],
+            effectiveAmount
+        );
+        _restoreCumulativeContributionAcl(room, from);
+
+        room.collectionAggregate = Nox.add(room.collectionAggregate, effectiveAmount);
+        _restoreCollectionAggregateAcl(room);
+
+        contributions[contributionId] = Contribution({
+            exists: true,
+            roomId: roomId,
+            contributor: from,
+            receipt: effectiveAmount,
+            positiveHandle: positive,
+            finalized: false,
+            accepted: false
+        });
+        _restoreContributionReceiptAcl(contributions[contributionId]);
+        Nox.allowThis(positive);
+        Nox.allowPublicDecryption(positive);
+
+        if (room.publicTarget != 0) {
+            _updateCollectionTarget(roomId, room);
+        }
+
+        Nox.allowTransient(positive, msg.sender);
+
+        emit ContributionReceived(roomId, contributionId, from);
+        return positive;
+    }
+
+    function finalizeContribution(
+        uint256 contributionId,
+        bytes calldata publicDecryptionProof
+    ) external {
+        Contribution storage contribution = _contribution(contributionId);
+        if (contribution.finalized) {
+            revert ContributionAlreadyFinalized(contributionId);
+        }
+
+        bool accepted = Nox.publicDecrypt(contribution.positiveHandle, publicDecryptionProof);
+        Room storage room = _room(contribution.roomId);
+
+        contribution.finalized = true;
+        contribution.accepted = accepted;
+
+        if (accepted) {
+            room.verifiedContributionCount += 1;
+            if (!room.hasVerifiedContribution[contribution.contributor]) {
+                room.hasVerifiedContribution[contribution.contributor] = true;
+                room.uniqueContributorCount += 1;
+            }
+        }
+
+        emit ContributionFinalized(
+            contribution.roomId,
+            contributionId,
+            contribution.contributor,
+            accepted,
+            room.verifiedContributionCount,
+            room.uniqueContributorCount
+        );
+    }
+
+    function finalizeCollectionTarget(
+        uint256 roomId,
+        bytes calldata publicDecryptionProof
+    ) external {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        if (room.publicTarget == 0) {
+            revert TargetNotConfigured(roomId);
+        }
+        if (!Nox.isInitialized(room.collectionTargetHandle)) {
+            revert TargetNotReady(roomId);
+        }
+        if (room.collectionTargetFinalized && room.finalizedTargetVersion == room.collectionTargetVersion) {
+            revert TargetAlreadyFinalized(roomId, room.collectionTargetVersion);
+        }
+
+        bool reached = Nox.publicDecrypt(room.collectionTargetHandle, publicDecryptionProof);
+
+        room.collectionTargetFinalized = true;
+        room.finalizedTargetVersion = room.collectionTargetVersion;
+        room.publicTargetReached = reached;
+
+        emit CollectionTargetFinalized(roomId, room.collectionTargetVersion, reached);
+    }
+
+    function closePrivateCircle(uint256 roomId) external {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        if (msg.sender != room.organizer) {
+            revert NotOrganizer(msg.sender);
+        }
+        if (room.collectionStatus != CollectionStatus.Open) {
+            revert CollectionNotOpen(room.collectionStatus);
+        }
+
+        room.collectionStatus = CollectionStatus.Closed;
+        room.status = RoomStatus.ReadyForDecryption;
+        emit PrivateCircleClosed(roomId);
+    }
+
+    function requestCollectionWithdrawal(uint256 roomId) external nonReentrant {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        if (msg.sender != room.organizer) {
+            revert NotOrganizer(msg.sender);
+        }
+        if (room.withdrawalRequested) {
+            revert WithdrawalAlreadyRequested(roomId);
+        }
+        if (
+            room.collectionStatus != CollectionStatus.Closed &&
+            block.timestamp < room.submissionDeadline
+        ) {
+            revert WithdrawalNotAllowed(roomId);
+        }
+        if (room.collectionStatus == CollectionStatus.Cancelled || room.collectionStatus == CollectionStatus.Withdrawn) {
+            revert WithdrawalNotAllowed(roomId);
+        }
+        if (room.verifiedContributionCount == 0) {
+            revert ZeroContributionCollection(roomId);
+        }
+
+        room.withdrawalRequested = true;
+        room.collectionStatus = CollectionStatus.WithdrawalPending;
+        room.status = RoomStatus.ReadyForDecryption;
+
+        Nox.allowTransient(room.collectionAggregate, room.confidentialToken);
+        euint256 actualTransferred = IERC7984(room.confidentialToken).confidentialTransfer(
+            room.recipient,
+            room.collectionAggregate
+        );
+        room.withdrawalHandle = actualTransferred;
+        _restoreWithdrawalAcl(room);
+
+        ebool success = Nox.eq(actualTransferred, room.collectionAggregate);
+        room.withdrawalSuccessHandle = success;
+        Nox.allowThis(success);
+        Nox.allowPublicDecryption(success);
+
+        emit CollectionWithdrawalRequested(roomId, room.recipient);
+    }
+
+    function finalizeCollectionWithdrawal(
+        uint256 roomId,
+        bytes calldata publicDecryptionProof
+    ) external {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        if (!room.withdrawalRequested) {
+            revert WithdrawalNotRequested(roomId);
+        }
+        if (room.withdrawalFinalized) {
+            revert WithdrawalAlreadyFinalized(roomId);
+        }
+
+        bool success = Nox.publicDecrypt(room.withdrawalSuccessHandle, publicDecryptionProof);
+        if (!success) {
+            revert WithdrawalFailed(roomId);
+        }
+
+        room.withdrawalFinalized = true;
+        room.collectionStatus = CollectionStatus.Withdrawn;
+        room.status = RoomStatus.Finalized;
+        room.collectionAggregate = Nox.toEuint256(0);
+        _restoreCollectionAggregateAcl(room);
+
+        emit CollectionWithdrawn(roomId, room.recipient);
+        emit RoomFinalized(roomId);
+    }
+
     function getRoom(uint256 roomId) external view returns (RoomView memory) {
         Room storage room = _room(roomId);
         return
@@ -588,6 +1021,127 @@ contract FairCircle {
         return room.roundingRecipient;
     }
 
+    function getPrivateCircle(uint256 roomId) external view returns (PrivateCircleView memory) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return
+            PrivateCircleView({
+                id: roomId,
+                title: room.title,
+                organizer: room.organizer,
+                confidentialToken: room.confidentialToken,
+                recipient: room.recipient,
+                publicTarget: room.publicTarget,
+                deadline: room.submissionDeadline,
+                access: room.collectionAccess,
+                collectionStatus: room.collectionStatus,
+                verifiedContributionCount: room.verifiedContributionCount,
+                uniqueContributorCount: room.uniqueContributorCount,
+                targetVersion: room.collectionTargetVersion
+            });
+    }
+
+    function getContribution(
+        uint256 contributionId
+    ) external view returns (ContributionView memory) {
+        Contribution storage contribution = _contribution(contributionId);
+        return
+            ContributionView({
+                id: contributionId,
+                roomId: contribution.roomId,
+                contributor: contribution.contributor,
+                finalized: contribution.finalized,
+                accepted: contribution.accepted
+            });
+    }
+
+    function getContributionPositivityHandle(uint256 contributionId) external view returns (ebool) {
+        return _contribution(contributionId).positiveHandle;
+    }
+
+    function getMyContributionHandle(uint256 contributionId) external view returns (euint256) {
+        Contribution storage contribution = _contribution(contributionId);
+        if (msg.sender != contribution.contributor) {
+            revert NotContributor(msg.sender);
+        }
+        return contribution.receipt;
+    }
+
+    function getMyCumulativeContributionHandle(uint256 roomId) external view returns (euint256) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        if (!Nox.isInitialized(room.cumulativeContributions[msg.sender])) {
+            revert ContributionNotAvailable(msg.sender);
+        }
+        return room.cumulativeContributions[msg.sender];
+    }
+
+    function getCollectionAggregateHandle(uint256 roomId) external view returns (euint256) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return room.collectionAggregate;
+    }
+
+    function getVerifiedContributionCount(uint256 roomId) external view returns (uint256) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return room.verifiedContributionCount;
+    }
+
+    function getUniqueContributorCount(uint256 roomId) external view returns (uint256) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return room.uniqueContributorCount;
+    }
+
+    function hasVerifiedContribution(
+        uint256 roomId,
+        address account
+    ) external view returns (bool) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return room.hasVerifiedContribution[account];
+    }
+
+    function getCollectionTargetHandle(uint256 roomId) external view returns (ebool) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        if (room.publicTarget == 0) {
+            revert TargetNotConfigured(roomId);
+        }
+        return room.collectionTargetHandle;
+    }
+
+    function getCollectionTargetVersion(uint256 roomId) external view returns (uint64) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return room.collectionTargetVersion;
+    }
+
+    function getPublicTargetStatus(
+        uint256 roomId
+    ) external view returns (bool finalized, bool reached, uint64 version) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return (
+            room.collectionTargetFinalized && room.finalizedTargetVersion == room.collectionTargetVersion,
+            room.publicTargetReached,
+            room.collectionTargetVersion
+        );
+    }
+
+    function getWithdrawalHandle(uint256 roomId) external view returns (euint256) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return room.withdrawalHandle;
+    }
+
+    function getWithdrawalSuccessHandle(uint256 roomId) external view returns (ebool) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return room.withdrawalSuccessHandle;
+    }
+
     function isSplitFeasibilityPubliclyDecryptable(
         uint256 roomId
     ) external view returns (bool) {
@@ -654,6 +1208,58 @@ contract FairCircle {
         Room storage room = _room(roomId);
         _validateOptionIndex(room, optionIndex);
         return Nox.isPubliclyDecryptable(room.affordabilityHandles[optionIndex]);
+    }
+
+    function isCollectionAggregateAllowed(
+        uint256 roomId,
+        address account
+    ) external view returns (bool) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return Nox.isAllowed(room.collectionAggregate, account);
+    }
+
+    function isCumulativeContributionAllowed(
+        uint256 roomId,
+        address contributor,
+        address account
+    ) external view returns (bool) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        if (!Nox.isInitialized(room.cumulativeContributions[contributor])) {
+            revert ContributionNotAvailable(contributor);
+        }
+        return Nox.isAllowed(room.cumulativeContributions[contributor], account);
+    }
+
+    function isContributionReceiptAllowed(
+        uint256 contributionId,
+        address account
+    ) external view returns (bool) {
+        Contribution storage contribution = _contribution(contributionId);
+        return Nox.isAllowed(contribution.receipt, account);
+    }
+
+    function isContributionPositivityPubliclyDecryptable(
+        uint256 contributionId
+    ) external view returns (bool) {
+        return Nox.isPubliclyDecryptable(_contribution(contributionId).positiveHandle);
+    }
+
+    function isCollectionTargetPubliclyDecryptable(
+        uint256 roomId
+    ) external view returns (bool) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return Nox.isPubliclyDecryptable(room.collectionTargetHandle);
+    }
+
+    function isWithdrawalSuccessPubliclyDecryptable(
+        uint256 roomId
+    ) external view returns (bool) {
+        Room storage room = _room(roomId);
+        _requireRoomMode(room, RoomMode.PrivateCircle);
+        return Nox.isPubliclyDecryptable(room.withdrawalSuccessHandle);
     }
 
     function _evaluateAffordability(uint256 roomId, Room storage room) private {
@@ -726,6 +1332,17 @@ contract FairCircle {
         _restoreShareAcl(room, roundingRecipient);
     }
 
+    function _updateCollectionTarget(uint256 roomId, Room storage room) private {
+        ebool result = Nox.ge(room.collectionAggregate, room.encryptedTarget);
+        room.collectionTargetHandle = result;
+        room.collectionTargetVersion += 1;
+        room.collectionTargetFinalized = false;
+        Nox.allowThis(result);
+        Nox.allowPublicDecryption(result);
+
+        emit CollectionTargetReady(roomId, room.collectionTargetVersion);
+    }
+
     function _restoreCapacityAcl(Room storage room, address member) private {
         euint256 capacity = room.capacities[member];
         Nox.allowThis(capacity);
@@ -740,6 +1357,41 @@ contract FairCircle {
         euint256 share = room.shares[member];
         Nox.allowThis(share);
         Nox.allow(share, member);
+    }
+
+    function _restoreCollectionAggregateAcl(Room storage room) private {
+        Nox.allowThis(room.collectionAggregate);
+        Nox.allow(room.collectionAggregate, room.organizer);
+    }
+
+    function _restoreCumulativeContributionAcl(Room storage room, address contributor) private {
+        euint256 cumulative = room.cumulativeContributions[contributor];
+        Nox.allowThis(cumulative);
+        Nox.allow(cumulative, contributor);
+    }
+
+    function _restoreContributionReceiptAcl(Contribution storage contribution) private {
+        Nox.allowThis(contribution.receipt);
+        Nox.allow(contribution.receipt, contribution.contributor);
+    }
+
+    function _restoreWithdrawalAcl(Room storage room) private {
+        Nox.allowThis(room.withdrawalHandle);
+        Nox.allow(room.withdrawalHandle, room.organizer);
+        Nox.allow(room.withdrawalHandle, room.recipient);
+    }
+
+    function _validateConfidentialToken(address token) private view {
+        if (token.code.length == 0) {
+            revert InvalidToken(token);
+        }
+        try IERC165(token).supportsInterface(type(IERC7984).interfaceId) returns (bool supported) {
+            if (!supported) {
+                revert InvalidToken(token);
+            }
+        } catch {
+            revert InvalidToken(token);
+        }
     }
 
     function _requireRoomMode(Room storage room, RoomMode expected) private view {
@@ -758,6 +1410,13 @@ contract FairCircle {
         room = rooms[roomId];
         if (!room.exists) {
             revert InvalidRoomId(roomId);
+        }
+    }
+
+    function _contribution(uint256 contributionId) private view returns (Contribution storage contribution) {
+        contribution = contributions[contributionId];
+        if (!contribution.exists) {
+            revert InvalidContributionId(contributionId);
         }
     }
 
