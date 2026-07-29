@@ -1,0 +1,119 @@
+{
+  "schemaVersion": 1,
+  "network": {
+    "name": "ethereum-sepolia",
+    "chainId": 11155111
+  },
+  "status": "passed",
+  "resumed": true,
+  "recoveryReason": "named PlanView tuple decoding failure after successful plan completion",
+  "timestamp": "2026-07-29T18:48:31.852Z",
+  "deployer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+  "actors": [
+    "0xcDF1984Cf2e9DA885d1dae5C8e62449284eE06A9",
+    "0x79DD8260773C7D5DEA701dfC2D3dD804FF041bf2",
+    "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798"
+  ],
+  "recipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+  "recipientMode": "actor3",
+  "planId": "2",
+  "targetPlanId": "2",
+  "budgetRoomId": "5",
+  "splitRoomId": "6",
+  "collectionRoomId": "7",
+  "targetCollectionRoomId": "7",
+  "selectedCost": "150",
+  "targetSelectedCost": "150",
+  "recipientBalanceBeforeRecovery": "300",
+  "preExistingRecipientBalance": "150",
+  "targetWithdrawalCredit": "150",
+  "expectedBalanceBeforeUnwrap": "300",
+  "remainingConfidentialBalance": "150",
+  "targetWithdrawalTransactionHash": "0xe3d7aaa60fde543fecd680bc0df0897a6cfb4dbf3080e81e5cc2f1c1c0110596",
+  "recoveredTransactionHashes": {
+    "PlanCreated": [
+      "0x2ec75e965236e039dd25217305cd8d5b28faaee9011de57f651459fda5eb6eed"
+    ],
+    "AffordableOptionSelected": [
+      "0xc4e83226c4ad50aee2876edf51f4527fd21c486f2216a50a24f36798bafa1adb"
+    ],
+    "FairSplitRoomLinked": [
+      "0x83e12f30431e1e23e56dae3d895dfb13d7bad9b77899d5cf3a000f78d19203f3"
+    ],
+    "FairSplitConfirmed": [
+      "0x22c72a0524c8ce8f88ea9c26db0da56752f62b7a18db1f2bc278eddf0cb872c2"
+    ],
+    "PrivateCircleRoomLinked": [
+      "0xc9b57346ca286fdd8e4b0558454a0148c8fd26a353d7af2406ea305e6528cb66"
+    ],
+    "PlanCompleted": [
+      "0xc60ac129be56b254cfdd8ce92025096425f3eb0d626f04d98e3dc449d3e96939"
+    ],
+    "budgetRoomCreation": [
+      "0x5524713d195b033f0546183d9df9e4ed049aae631b2810e2f2bbff934dcaeb75"
+    ],
+    "splitRoomCreation": [
+      "0x5aa7c8a7f3d8c9cba0d6717e7ab208cfb8e8327b79ffef6543992d8dc20204e5"
+    ],
+    "collectionRoomCreation": [
+      "0x5afa6be9dcc8920b146608cd087876983dc6cd66a67684c3495e7825befc7c80"
+    ],
+    "budgetCapacitySubmissions": [
+      "0xc3b67c75db0e38226fabaf9a2762ea65da5bb52fd86e69ce35824928bf8769cd",
+      "0xe9707128e3c2c10cb7395973b5f52ca753b3e27088713511d08e0bfcfe5587ee",
+      "0xa299de67ddcf45651eed9913efd41e12acaa7f1d053b8ef7b443268b3937d5c7"
+    ],
+    "splitCapacitySubmissions": [
+      "0x6a0de4c6ce3d1c6a5ada8bd7c73d6f6248c517f371bf9eec6f85ddfb0b4e47e7",
+      "0x7e16ffc9a243c193def8e957c6e1a72971d973ced6f16e8bfce34820c396299e",
+      "0xfe5180085ad7f7fa504029e4d8a9608bfc933b1260321681690c0646f442d0ae"
+    ],
+    "splitFinalization": [
+      "0x76f8f8b99b592eaae6c8ad033865cb7c1e7c9567b433779097bd7f9c6b33a563"
+    ],
+    "contributions": [
+      "0x55b1ac7fec042c39628b08c2bd3f8c557d9923c2376a5d10aa8e6cdf5ebb68aa",
+      "0x76949aa8ff1a13ec27cece5e4dedb0e50d45a6ce97764e22e8c1542864e7d94b",
+      "0xa6f84b99a2355c6a65d567e429fb80e65a51f452a558105d72d82600c082c8ce"
+    ],
+    "contributionFinalizations": [
+      "0xbe1ca4bfa6d126b4d03605a4f17d8e6bcedee780266e5edd8268aa2f8e2cac50",
+      "0x954e8b5741b5fd1cefc25e9c34c4c6e01a36bc70f82f6029757c6ad64e6b9ac0",
+      "0xb7a6cbea1d96ef2ed0bd4f37e9618ec94041019115d21da514f5871f7ef42241"
+    ],
+    "collectionTargetFinalization": [
+      "0x53ea00d6009718b134ec145a2a79d0b9279a2aac4d05342e33c51eab22bcb25b"
+    ],
+    "collectionClose": [
+      "0xf35a507436082922797a47c064f57756f54f0680923e637b8753c9396f0f2eb1"
+    ],
+    "withdrawalRequest": [
+      "0xe3d7aaa60fde543fecd680bc0df0897a6cfb4dbf3080e81e5cc2f1c1c0110596"
+    ],
+    "withdrawal": [
+      "0xf04f1e76f701f1859d1080390483674b715284969b53e480a05bc76cd19e6ec9"
+    ],
+    "coordinatorTransfers": "unavailable"
+  },
+  "unwrapTransactionHashes": {
+    "unwrapRequest": "0x013c6765306792f1e168dc51ba75a58ed8698bc5fbf5f3e5026668efc6b31b4d",
+    "finalizeUnwrap": "0x8a10f5318a3dbe15a39c769a7d79d303d8adca7a7e7788810dd10c760e35e4eb"
+  },
+  "recipientPublicDelta": "150",
+  "confidentialityChecks": {
+    "deployerCannotReadActor1Capacity": true,
+    "actor1CanReadOwnShare": true,
+    "deployerCannotReadActor1Contribution": true
+  },
+  "fixedSnapshotBlock": "11377330",
+  "recoveryEventSnapshotBlock": "11377330",
+  "coordinatorConfidentialTransferEvents": 0,
+  "coordinatorTransferCount": 0,
+  "idempotency": "fresh-unwrap",
+  "idempotencyState": "fresh-unwrap",
+  "balanceLedgerReconciliation": {
+    "ledgerDerivedBalance": "300",
+    "decryptedCurrentBalance": "300",
+    "matches": true
+  }
+}

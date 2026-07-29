@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "network": {
+    "name": "ethereum-sepolia",
+    "chainId": 11155111
+  },
+  "deployer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+  "gitCommit": "d2c722a0951a1e0f9bc18962c43c8872e5924a64",
+  "timestamp": "2026-07-29T10:25:17.546Z",
+  "nox": {
+    "address": "0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF",
+    "runtimeBytecodeHash": "0x9051c2db7e8a643e765dbe24abc6661bcd78bcd849f9e1f83bf5a59e95dd7438"
+  },
+  "contracts": {
+    "TestUSD": {
+      "address": "0x713dd4c2b2f52d7c9fb848fcb5bbf49e1c0a89db",
+      "constructorArgs": [],
+      "transactionHash": "0x99766c64236ea7f986bc6737bf16367420be7c4fac693aecef86d9e6e90681b2",
+      "blockNumber": "11374928",
+      "gasUsed": "602734",
+      "runtimeBytecodeHash": "0x0f43c95bd44f109437962db9b175237be209cf1aa9e8d131f0e4d922263c2f11"
+    },
+    "FairCircleUSD": {
+      "address": "0xded7d0ee8508f8fde4d66e44ad3e41835bdcaf16",
+      "constructorArgs": [
+        "0x713dd4c2b2f52d7c9fb848fcb5bbf49e1c0a89db"
+      ],
+      "transactionHash": "0xc7d946ba90f874f0b8b718821ce7d6118c08ca0485e8599a104365aaad42a873",
+      "blockNumber": "11374930",
+      "gasUsed": "1996905",
+      "runtimeBytecodeHash": "0xdb8e55df71b2d013829c3abc2525e48cc9da93f5289df70f7e8446f2822b88e5"
+    },
+    "FairCircle": {
+      "address": "0x0ee2037dc4337a322082356d3d611e285f6b8b7b",
+      "constructorArgs": [],
+      "transactionHash": "0xa84e94652e91aff9e79425d027f48248b141ed05f8d535741940e4d4ecf4bf1a",
+      "blockNumber": "11374933",
+      "gasUsed": "4987402",
+      "runtimeBytecodeHash": "0x963bd5942c98629e49f4941c94cf2579bd1adfa95eeed5cb81929187cae9083c"
+    },
+    "FairCirclePlanTogether": {
+      "address": "0x49f20aed2002bd14202b34f0e72e01ae43c91060",
+      "constructorArgs": [
+        "0x0ee2037dc4337a322082356d3d611e285f6b8b7b",
+        "0xded7d0ee8508f8fde4d66e44ad3e41835bdcaf16"
+      ],
+      "transactionHash": "0x26f52b09e80d8bc9c86c775f4d8fa08a982c2c2767797010831117a2a0f723b9",
+      "blockNumber": "11374935",
+      "gasUsed": "2519325",
+      "runtimeBytecodeHash": "0x5c0c1839f30865544d8589fda9355252d840b085bd04fd8c4e82d711be0f97b4"
+    }
+  },
+  "sourceVerification": {
+    "provider": "etherscan",
+    "attempted": false,
+    "status": "skipped",
+    "reason": "ETHERSCAN_API_KEY is not set.",
+    "results": {}
+  }
+}
