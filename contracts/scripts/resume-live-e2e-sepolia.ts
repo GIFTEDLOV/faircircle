@@ -32,19 +32,38 @@ import {
   waitForSuccessfulReceipt,
   writeJsonAtomic,
 } from "./sepolia-utils.js";
+import {
+  HistoricalEventReader,
+  safeErrorMessage,
+  type HistoricalEventLog,
+} from "./rpc-event-reader.js";
 
 const LIVE_TITLE = "Sepolia live Plan Together";
 const EXPECTED_SELECTED_COST = 150n;
 
-type EventLog = {
-  transactionHash: Hex;
-  blockNumber: bigint;
-  logIndex: number;
-  args?: Record<string, unknown>;
-};
-
 type EvidenceValue = Hex[] | "unavailable";
 type RecoveredEvidence = Record<string, EvidenceValue>;
+type EvidenceLogs = {
+  PlanCreated: HistoricalEventLog[];
+  AffordableOptionSelected: HistoricalEventLog[];
+  FairSplitRoomLinked: HistoricalEventLog[];
+  FairSplitConfirmed: HistoricalEventLog[];
+  PrivateCircleRoomLinked: HistoricalEventLog[];
+  PlanCompleted: HistoricalEventLog[];
+  budgetRoomCreation: HistoricalEventLog[];
+  splitRoomCreation: HistoricalEventLog[];
+  collectionRoomCreation: HistoricalEventLog[];
+  budgetCapacitySubmissions: HistoricalEventLog[];
+  splitCapacitySubmissions: HistoricalEventLog[];
+  splitFinalization: HistoricalEventLog[];
+  contributions: HistoricalEventLog[];
+  contributionFinalizations: HistoricalEventLog[];
+  collectionTargetFinalization: HistoricalEventLog[];
+  collectionClose: HistoricalEventLog[];
+  withdrawalRequest: HistoricalEventLog[];
+  withdrawal: HistoricalEventLog[];
+  coordinatorTransfers: HistoricalEventLog[];
+};
 
 async function main() {
   loadSepoliaEnv();
@@ -78,6 +97,10 @@ async function main() {
     manifest.contracts.FairCircle.blockNumber,
     manifest.contracts.FairCirclePlanTogether.blockNumber,
   );
+  const recoveryToBlock = await publicClient.getBlockNumber();
+  const eventReader = new HistoricalEventReader(publicClient, {
+    logger: (message) => console.log(message),
+  });
 
   const planId = await latestPlanId(publicClient, coordinator, artifacts.FairCirclePlanTogether.abi);
   const finalPlan = asPlanView(await publicClient.readContract({
@@ -120,21 +143,8 @@ async function main() {
     "collection status",
   );
 
-  const coordinatorTransfersBefore = await coordinatorTransferEvents(
-    publicClient,
-    cUsd,
-    artifacts.FairCircleUSD.abi,
-    coordinator,
-    fromBlock,
-  );
-  assert.equal(
-    coordinatorTransfersBefore.length,
-    0,
-    "coordinator cFUSD transfer activity before resume",
-  );
-
-  const evidence = await recoverEvidence(
-    publicClient,
+  const evidenceLogs = await recoverEvidenceLogs(
+    eventReader,
     artifacts,
     fairCircle,
     coordinator,
@@ -146,16 +156,22 @@ async function main() {
     finalPlan.splitRoomId,
     finalPlan.collectionRoomId,
     fromBlock,
+    recoveryToBlock,
   );
+  assert.equal(
+    evidenceLogs.coordinatorTransfers.length,
+    0,
+    "coordinator cFUSD transfer activity before resume",
+  );
+
+  const planCompletedLog = requireSingleLog(
+    evidenceLogs.PlanCompleted,
+    "PlanCompleted",
+  );
+  const evidence = evidenceReport(evidenceLogs);
   await assertEvidenceReceipts(publicClient, evidence);
 
-  const contributionIds = await contributionIdsForCollection(
-    publicClient,
-    fairCircle,
-    artifacts.FairCircle.abi,
-    finalPlan.collectionRoomId,
-    fromBlock,
-  );
+  const contributionIds = contributionIdsFromLogs(evidenceLogs.contributions);
   if (contributionIds.length === 0) {
     throw new Error("Unable to recover contribution IDs for confidentiality ACL checks.");
   }
@@ -179,16 +195,10 @@ async function main() {
     recipientBalanceHandle,
   );
 
-  const planCompletedBlock = await requiredEventBlock(
-    publicClient,
-    coordinator,
-    artifacts.FairCirclePlanTogether.abi,
-    "PlanCompleted",
-    { planId, collectionRoomId: finalPlan.collectionRoomId },
-    fromBlock,
-  );
+  const planCompletedBlock = planCompletedLog.blockNumber;
   const unwrapRecovery = await resumeOrVerifyUnwrap({
     publicClient,
+    eventReader,
     deployerWallet,
     recipientWallet: roles.recipientWallet,
     deployerClient,
@@ -200,6 +210,7 @@ async function main() {
     recipient: roles.recipient,
     recipientConfidentialBalance: recipientConfidentialBalance.value as bigint,
     fromBlock: planCompletedBlock,
+    toBlock: recoveryToBlock,
   });
 
   const confidentialityChecks = {
@@ -228,15 +239,16 @@ async function main() {
     deployerCannotReadActor1Contribution: true,
   });
 
-  const coordinatorTransfersAfter = await coordinatorTransferEvents(
+  const resumeCoordinatorTransfers = await coordinatorTransfersFromReceipts(
     publicClient,
-    cUsd,
     artifacts.FairCircleUSD.abi,
     coordinator,
-    fromBlock,
+    unwrapRecovery.transactionHashes,
   );
+  const coordinatorTransferCount =
+    evidenceLogs.coordinatorTransfers.length + resumeCoordinatorTransfers.length;
   assert.equal(
-    coordinatorTransfersAfter.length,
+    coordinatorTransferCount,
     0,
     "coordinator cFUSD transfer activity after resume",
   );
@@ -262,8 +274,9 @@ async function main() {
     unwrapTransactionHashes: unwrapRecovery.transactionHashes,
     recipientPublicDelta: unwrapRecovery.publicDelta.toString(),
     confidentialityChecks,
-    coordinatorConfidentialTransferEvents: coordinatorTransfersAfter.length,
-    coordinatorTransferCount: coordinatorTransfersAfter.length,
+    recoveryEventSnapshotBlock: recoveryToBlock.toString(),
+    coordinatorConfidentialTransferEvents: coordinatorTransferCount,
+    coordinatorTransferCount,
     idempotency: unwrapRecovery.idempotency,
   });
 
@@ -282,8 +295,8 @@ async function latestPlanId(publicClient: PublicClient, coordinator: Address, ab
   return nextPlanId - 1n;
 }
 
-async function recoverEvidence(
-  publicClient: PublicClient,
+async function recoverEvidenceLogs(
+  eventReader: HistoricalEventReader,
   artifacts: Awaited<ReturnType<typeof loadArtifacts>>,
   fairCircle: Address,
   coordinator: Address,
@@ -295,34 +308,37 @@ async function recoverEvidence(
   splitRoomId: bigint,
   collectionRoomId: bigint,
   fromBlock: bigint,
-): Promise<RecoveredEvidence> {
+  toBlock: bigint,
+): Promise<EvidenceLogs> {
   const coordinatorAbi = artifacts.FairCirclePlanTogether.abi;
   const fairCircleAbi = artifacts.FairCircle.abi;
 
   return {
-    PlanCreated: txs(await events(publicClient, coordinator, coordinatorAbi, "PlanCreated", { planId, budgetRoomId, organizer: deployer }, fromBlock)),
-    AffordableOptionSelected: txs(await events(publicClient, coordinator, coordinatorAbi, "AffordableOptionSelected", { planId, budgetRoomId, optionIndex: 1n }, fromBlock)),
-    FairSplitRoomLinked: txs(await events(publicClient, coordinator, coordinatorAbi, "FairSplitRoomLinked", { planId, splitRoomId }, fromBlock)),
-    FairSplitConfirmed: txs(await events(publicClient, coordinator, coordinatorAbi, "FairSplitConfirmed", { planId, splitRoomId }, fromBlock)),
-    PrivateCircleRoomLinked: txs(await events(publicClient, coordinator, coordinatorAbi, "PrivateCircleRoomLinked", { planId, collectionRoomId, recipient }, fromBlock)),
-    PlanCompleted: txs(await events(publicClient, coordinator, coordinatorAbi, "PlanCompleted", { planId, collectionRoomId }, fromBlock)),
-    budgetRoomCreation: txs(await events(publicClient, fairCircle, fairCircleAbi, "RoomCreated", { roomId: budgetRoomId, organizer: deployer }, fromBlock)),
-    splitRoomCreation: txs(await events(publicClient, fairCircle, fairCircleAbi, "FairSplitRoomCreated", { roomId: splitRoomId, organizer: deployer }, fromBlock)),
-    collectionRoomCreation: txs(await events(publicClient, fairCircle, fairCircleAbi, "PrivateCircleCreated", { roomId: collectionRoomId, organizer: deployer, confidentialToken: cUsd }, fromBlock)),
-    budgetCapacitySubmissions: txs(await events(publicClient, fairCircle, fairCircleAbi, "CapacitySubmitted", { roomId: budgetRoomId }, fromBlock)),
-    splitCapacitySubmissions: txs(await events(publicClient, fairCircle, fairCircleAbi, "SplitCapacitySubmitted", { roomId: splitRoomId }, fromBlock)),
-    splitFinalization: txs(await events(publicClient, fairCircle, fairCircleAbi, "SplitFeasibilityFinalized", { roomId: splitRoomId }, fromBlock)),
-    contributions: txs(await events(publicClient, fairCircle, fairCircleAbi, "ContributionReceived", { roomId: collectionRoomId }, fromBlock)),
-    contributionFinalizations: txs(await events(publicClient, fairCircle, fairCircleAbi, "ContributionFinalized", { roomId: collectionRoomId }, fromBlock)),
-    collectionTargetFinalization: txs(await events(publicClient, fairCircle, fairCircleAbi, "CollectionTargetFinalized", { roomId: collectionRoomId }, fromBlock)),
-    collectionClose: txs(await events(publicClient, fairCircle, fairCircleAbi, "PrivateCircleClosed", { roomId: collectionRoomId }, fromBlock)),
-    withdrawalRequest: txs(await events(publicClient, fairCircle, fairCircleAbi, "CollectionWithdrawalRequested", { roomId: collectionRoomId, recipient }, fromBlock)),
-    withdrawal: txs(await events(publicClient, fairCircle, fairCircleAbi, "CollectionWithdrawn", { roomId: collectionRoomId, recipient }, fromBlock)),
+    PlanCreated: await readOptionalEvents(eventReader, coordinator, coordinatorAbi, "PlanCreated", { planId, budgetRoomId, organizer: deployer }, fromBlock, toBlock),
+    AffordableOptionSelected: await readOptionalEvents(eventReader, coordinator, coordinatorAbi, "AffordableOptionSelected", { planId, budgetRoomId, optionIndex: 1n }, fromBlock, toBlock),
+    FairSplitRoomLinked: await readOptionalEvents(eventReader, coordinator, coordinatorAbi, "FairSplitRoomLinked", { planId, splitRoomId }, fromBlock, toBlock),
+    FairSplitConfirmed: await readOptionalEvents(eventReader, coordinator, coordinatorAbi, "FairSplitConfirmed", { planId, splitRoomId }, fromBlock, toBlock),
+    PrivateCircleRoomLinked: await readOptionalEvents(eventReader, coordinator, coordinatorAbi, "PrivateCircleRoomLinked", { planId, collectionRoomId, recipient }, fromBlock, toBlock),
+    PlanCompleted: await readMandatoryEvents(eventReader, coordinator, coordinatorAbi, "PlanCompleted", { planId, collectionRoomId }, fromBlock, toBlock),
+    budgetRoomCreation: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "RoomCreated", { roomId: budgetRoomId, organizer: deployer }, fromBlock, toBlock),
+    splitRoomCreation: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "FairSplitRoomCreated", { roomId: splitRoomId, organizer: deployer }, fromBlock, toBlock),
+    collectionRoomCreation: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "PrivateCircleCreated", { roomId: collectionRoomId, organizer: deployer, confidentialToken: cUsd }, fromBlock, toBlock),
+    budgetCapacitySubmissions: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "CapacitySubmitted", { roomId: budgetRoomId }, fromBlock, toBlock),
+    splitCapacitySubmissions: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "SplitCapacitySubmitted", { roomId: splitRoomId }, fromBlock, toBlock),
+    splitFinalization: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "SplitFeasibilityFinalized", { roomId: splitRoomId }, fromBlock, toBlock),
+    contributions: await readMandatoryEvents(eventReader, fairCircle, fairCircleAbi, "ContributionReceived", { roomId: collectionRoomId }, fromBlock, toBlock),
+    contributionFinalizations: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "ContributionFinalized", { roomId: collectionRoomId }, fromBlock, toBlock),
+    collectionTargetFinalization: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "CollectionTargetFinalized", { roomId: collectionRoomId }, fromBlock, toBlock),
+    collectionClose: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "PrivateCircleClosed", { roomId: collectionRoomId }, fromBlock, toBlock),
+    withdrawalRequest: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "CollectionWithdrawalRequested", { roomId: collectionRoomId, recipient }, fromBlock, toBlock),
+    withdrawal: await readOptionalEvents(eventReader, fairCircle, fairCircleAbi, "CollectionWithdrawn", { roomId: collectionRoomId, recipient }, fromBlock, toBlock),
+    coordinatorTransfers: await coordinatorTransferEvents(eventReader, cUsd, artifacts.FairCircleUSD.abi, coordinator, fromBlock, toBlock),
   };
 }
 
 async function resumeOrVerifyUnwrap({
   publicClient,
+  eventReader,
   deployerWallet,
   recipientWallet,
   deployerClient,
@@ -334,8 +350,10 @@ async function resumeOrVerifyUnwrap({
   recipient,
   recipientConfidentialBalance,
   fromBlock,
+  toBlock,
 }: {
   publicClient: PublicClient;
+  eventReader: HistoricalEventReader;
   deployerWallet: WalletClient;
   recipientWallet: WalletClient;
   deployerClient: HandleClient;
@@ -347,13 +365,15 @@ async function resumeOrVerifyUnwrap({
   recipient: Address;
   recipientConfidentialBalance: bigint;
   fromBlock: bigint;
+  toBlock: bigint;
 }) {
   const existingFinalized = await findFinalizedUnwrap(
-    publicClient,
+    eventReader,
     cUsd,
     cUsdAbi,
     recipient,
     fromBlock,
+    toBlock,
   );
   if (existingFinalized !== undefined) {
     if (recipientConfidentialBalance !== 0n) {
@@ -371,7 +391,15 @@ async function resumeOrVerifyUnwrap({
     };
   }
 
-  const pending = await findPendingUnwrap(publicClient, cUsd, cUsdAbi, recipient, fromBlock);
+  const pending = await findPendingUnwrap(
+    eventReader,
+    publicClient,
+    cUsd,
+    cUsdAbi,
+    recipient,
+    fromBlock,
+    toBlock,
+  );
   if (pending !== undefined) {
     if (recipientConfidentialBalance !== 0n) {
       throw new Error(
@@ -473,19 +501,21 @@ async function resumeOrVerifyUnwrap({
 }
 
 async function findFinalizedUnwrap(
-  publicClient: PublicClient,
+  eventReader: HistoricalEventReader,
   cUsd: Address,
   cUsdAbi: Abi,
   recipient: Address,
   fromBlock: bigint,
+  toBlock: bigint,
 ) {
-  const finalized = (await events(
-    publicClient,
+  const finalized = (await readMandatoryEvents(
+    eventReader,
     cUsd,
     cUsdAbi,
     "UnwrapFinalized",
     { receiver: recipient },
     fromBlock,
+    toBlock,
   )).filter((log) => BigInt(log.args?.plaintextAmount as bigint) === EXPECTED_SELECTED_COST);
   const [event] = finalized;
   if (event === undefined) {
@@ -493,9 +523,17 @@ async function findFinalizedUnwrap(
   }
   const encryptedAmount = event.args?.encryptedAmount as Hex | undefined;
   const request = encryptedAmount
-    ? (await events(publicClient, cUsd, cUsdAbi, "UnwrapRequested", { receiver: recipient }, fromBlock)).find(
-        (log) => lower(log.args?.amount as Hex | undefined) === lower(encryptedAmount),
-      )
+    ? (await readMandatoryEvents(
+        eventReader,
+        cUsd,
+        cUsdAbi,
+        "UnwrapRequested",
+        { receiver: recipient },
+        fromBlock,
+        toBlock,
+      )).find(
+      (log) => lower(log.args?.amount as Hex | undefined) === lower(encryptedAmount),
+    )
     : undefined;
   return {
     finalizeHash: event.transactionHash,
@@ -504,27 +542,31 @@ async function findFinalizedUnwrap(
 }
 
 async function findPendingUnwrap(
+  eventReader: HistoricalEventReader,
   publicClient: PublicClient,
   cUsd: Address,
   cUsdAbi: Abi,
   recipient: Address,
   fromBlock: bigint,
+  toBlock: bigint,
 ) {
-  const requests = await events(
-    publicClient,
+  const requests = await readMandatoryEvents(
+    eventReader,
     cUsd,
     cUsdAbi,
     "UnwrapRequested",
     { receiver: recipient },
     fromBlock,
+    toBlock,
   );
-  const finalized = await events(
-    publicClient,
+  const finalized = await readMandatoryEvents(
+    eventReader,
     cUsd,
     cUsdAbi,
     "UnwrapFinalized",
     { receiver: recipient },
     fromBlock,
+    toBlock,
   );
   const finalizedHandles = new Set(
     finalized.map((log) => lower(log.args?.encryptedAmount as Hex | undefined)),
@@ -547,35 +589,36 @@ async function findPendingUnwrap(
   return undefined;
 }
 
-async function contributionIdsForCollection(
-  publicClient: PublicClient,
-  fairCircle: Address,
-  abi: Abi,
-  collectionRoomId: bigint,
-  fromBlock: bigint,
-) {
-  const logs = await events(
-    publicClient,
-    fairCircle,
-    abi,
-    "ContributionReceived",
-    { roomId: collectionRoomId },
-    fromBlock,
-  );
+function contributionIdsFromLogs(logs: HistoricalEventLog[]) {
   return logs.map((log) => log.args?.contributionId as bigint);
 }
 
 async function coordinatorTransferEvents(
-  publicClient: PublicClient,
+  eventReader: HistoricalEventReader,
   cUsd: Address,
   abi: Abi,
   coordinator: Address,
   fromBlock: bigint,
+  toBlock: bigint,
 ) {
-  const [fromCoordinator, toCoordinator] = await Promise.all([
-    events(publicClient, cUsd, abi, "ConfidentialTransfer", { from: coordinator }, fromBlock),
-    events(publicClient, cUsd, abi, "ConfidentialTransfer", { to: coordinator }, fromBlock),
-  ]);
+  const fromCoordinator = await readMandatoryEvents(
+    eventReader,
+    cUsd,
+    abi,
+    "ConfidentialTransfer",
+    { from: coordinator },
+    fromBlock,
+    toBlock,
+  );
+  const toCoordinator = await readMandatoryEvents(
+    eventReader,
+    cUsd,
+    abi,
+    "ConfidentialTransfer",
+    { to: coordinator },
+    fromBlock,
+    toBlock,
+  );
   const seen = new Set<string>();
   return [...fromCoordinator, ...toCoordinator].filter((log) => {
     const key = `${log.transactionHash}:${log.logIndex}`;
@@ -587,37 +630,109 @@ async function coordinatorTransferEvents(
   });
 }
 
-async function requiredEventBlock(
+async function coordinatorTransfersFromReceipts(
   publicClient: PublicClient,
-  address: Address,
   abi: Abi,
-  eventName: string,
-  args: Record<string, unknown>,
-  fromBlock: bigint,
+  coordinator: Address,
+  hashes: Record<string, Hex | "unavailable">,
 ) {
-  const [event] = await events(publicClient, address, abi, eventName, args, fromBlock);
-  if (event === undefined) {
-    throw new Error(`${eventName} event was not found for the completed plan.`);
-  }
-  return event.blockNumber;
+  const realHashes = Object.values(hashes).filter(
+    (hash): hash is Hex => hash !== "unavailable",
+  );
+  const receipts = await Promise.all(
+    realHashes.map((hash) => publicClient.getTransactionReceipt({ hash })),
+  );
+  return receipts.flatMap((receipt) =>
+    parseEventLogs({
+      abi,
+      eventName: "ConfidentialTransfer",
+      logs: receipt.logs,
+    }).filter((event) => {
+      const args = event.args as { from: Address; to: Address };
+      return (
+        args.from.toLowerCase() === coordinator.toLowerCase() ||
+        args.to.toLowerCase() === coordinator.toLowerCase()
+      );
+    }),
+  );
 }
 
-async function events(
-  publicClient: PublicClient,
+async function readMandatoryEvents(
+  eventReader: HistoricalEventReader,
   address: Address,
   abi: Abi,
   eventName: string,
   args: Record<string, unknown>,
   fromBlock: bigint,
+  toBlock: bigint,
 ) {
-  return (await publicClient.getContractEvents({
+  return eventReader.readEvents({
     address,
     abi,
     eventName,
     args,
     fromBlock,
-    toBlock: "latest",
-  })) as EventLog[];
+    toBlock,
+  });
+}
+
+async function readOptionalEvents(
+  eventReader: HistoricalEventReader,
+  address: Address,
+  abi: Abi,
+  eventName: string,
+  args: Record<string, unknown>,
+  fromBlock: bigint,
+  toBlock: bigint,
+) {
+  try {
+    return await readMandatoryEvents(
+      eventReader,
+      address,
+      abi,
+      eventName,
+      args,
+      fromBlock,
+      toBlock,
+    );
+  } catch (error) {
+    console.log(
+      `Optional historical evidence unavailable for ${eventName}: ${safeErrorMessage(error)}`,
+    );
+    return [];
+  }
+}
+
+function requireSingleLog(logs: HistoricalEventLog[], label: string) {
+  const [log] = logs;
+  if (log === undefined) {
+    throw new Error(`${label} event was not found for the completed plan.`);
+  }
+  return log;
+}
+
+function evidenceReport(logs: EvidenceLogs): RecoveredEvidence {
+  return {
+    PlanCreated: txs(logs.PlanCreated),
+    AffordableOptionSelected: txs(logs.AffordableOptionSelected),
+    FairSplitRoomLinked: txs(logs.FairSplitRoomLinked),
+    FairSplitConfirmed: txs(logs.FairSplitConfirmed),
+    PrivateCircleRoomLinked: txs(logs.PrivateCircleRoomLinked),
+    PlanCompleted: txs(logs.PlanCompleted),
+    budgetRoomCreation: txs(logs.budgetRoomCreation),
+    splitRoomCreation: txs(logs.splitRoomCreation),
+    collectionRoomCreation: txs(logs.collectionRoomCreation),
+    budgetCapacitySubmissions: txs(logs.budgetCapacitySubmissions),
+    splitCapacitySubmissions: txs(logs.splitCapacitySubmissions),
+    splitFinalization: txs(logs.splitFinalization),
+    contributions: txs(logs.contributions),
+    contributionFinalizations: txs(logs.contributionFinalizations),
+    collectionTargetFinalization: txs(logs.collectionTargetFinalization),
+    collectionClose: txs(logs.collectionClose),
+    withdrawalRequest: txs(logs.withdrawalRequest),
+    withdrawal: txs(logs.withdrawal),
+    coordinatorTransfers: txs(logs.coordinatorTransfers),
+  };
 }
 
 async function assertEvidenceReceipts(
@@ -707,7 +822,7 @@ function scopedWallet(wallet: WalletClient) {
   }) as WalletClient;
 }
 
-function txs(logs: EventLog[]): EvidenceValue {
+function txs(logs: HistoricalEventLog[]): EvidenceValue {
   const unique = [...new Set(logs.map((log) => log.transactionHash))];
   return unique.length === 0 ? "unavailable" : unique;
 }
