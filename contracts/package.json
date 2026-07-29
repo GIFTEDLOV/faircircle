@@ -13,6 +13,7 @@
     "verify:sepolia": "hardhat run --network sepolia scripts/verify-sepolia-deployment.ts",
     "smoke:sepolia": "hardhat run --network sepolia scripts/smoke-sepolia.ts",
     "live-e2e:sepolia": "hardhat run --network sepolia scripts/live-e2e-sepolia.ts",
+    "resume-live-e2e:sepolia": "hardhat run --network sepolia scripts/resume-live-e2e-sepolia.ts",
     "diagnose:nox-compute": "hardhat run --network sepolia scripts/diagnose-nox-compute.ts",
     "demo:quiet-budget": "hardhat test scripts/demo-quiet-budget.ts",
     "demo:fair-split": "hardhat test scripts/demo-fair-split.ts",

@@ -14,6 +14,7 @@ import {
   resolveLiveE2ERoles,
   type RecipientMode,
 } from "./live-e2e-roles.js";
+import { asPlanView, assertPlanComplete } from "./live-e2e-plan.js";
 import {
   assertSepoliaChain,
   createSepoliaClients,
@@ -39,10 +40,6 @@ const SplitMethod = {
 
 const CollectionAccess = {
   InviteOnly: 1,
-} as const;
-
-const Stage = {
-  Complete: 3,
 } as const;
 
 const MIN_ACTOR_BALANCE_WEI = 5_000_000_000_000_000n;
@@ -378,13 +375,13 @@ async function main() {
     [planId],
   );
 
-  const finalPlan = (await publicClient.readContract({
+  const finalPlan = asPlanView(await publicClient.readContract({
     address: coordinator,
     abi: artifacts.FairCirclePlanTogether.abi,
     functionName: "getPlan",
     args: [planId],
-  })) as readonly unknown[];
-  assert.equal(finalPlan[3], Stage.Complete);
+  }));
+  assertPlanComplete(finalPlan);
 
   const recipientBalanceHandle = (await publicClient.readContract({
     address: cUsd,
