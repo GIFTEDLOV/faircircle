@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { createViemHandleClient, type HandleClient } from "@iexec-nox/handle";
-import { NOX_COMPUTE_ADDRESS } from "@iexec-nox/nox-hardhat-plugin";
 import {
   createWalletClient,
   encodeAbiParameters,
@@ -21,6 +20,7 @@ import {
   LIVE_E2E_PATH,
   loadArtifacts,
   loadSepoliaEnv,
+  noxComputeAddressForChain,
   normalizePrivateKey,
   oneHourFromNow,
   optionalEnv,
@@ -66,6 +66,7 @@ async function main() {
   const { publicClient, walletClient: deployerWallet, deployer } =
     createSepoliaClients();
   await assertSepoliaChain(publicClient);
+  const noxComputeAddress = noxComputeAddressForChain(await publicClient.getChainId());
 
   const actors = actorWallets();
   const actorAddresses = actors.map((wallet) => requireAccount(wallet));
@@ -83,7 +84,7 @@ async function main() {
   const clients = await Promise.all(
     [deployerWallet, ...actors, recipientWallet()].map((wallet) =>
       createViemHandleClient(scopedWallet(wallet), {
-        smartContractAddress: NOX_COMPUTE_ADDRESS,
+        smartContractAddress: noxComputeAddress,
         gatewayUrl,
         subgraphUrl,
       }),

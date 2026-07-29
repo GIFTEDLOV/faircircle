@@ -18,15 +18,20 @@ import {
   type Address,
   type Hex,
   type PublicClient,
+  type StateOverride,
   type TransactionReceipt,
   type WalletClient,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { sepolia } from "viem/chains";
-import { NOX_COMPUTE_ADDRESS } from "@iexec-nox/nox-hardhat-plugin";
 
 export const SEPOLIA_CHAIN_ID = 11155111;
 export const NETWORK_NAME = "ethereum-sepolia";
+export const NOX_COMPUTE_ADDRESSES = {
+  31337: "0x75C6AF4430cc474b1bb9b8540b7E46D6f8e1C685",
+  421614: "0xd464B198f06756a1d00be223634b85E0a731c229",
+  11155111: "0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF",
+} as const satisfies Record<number, Address>;
 export const DEPLOYMENT_PATH = resolve("..", "deployments", "ethereum-sepolia.json");
 export const DEPLOYMENT_ARCHIVE_DIR = resolve("..", "deployments", "archive");
 export const LIVE_E2E_PATH = resolve(
@@ -41,6 +46,13 @@ export const CONTRACT_NAMES = [
   "FairCircle",
   "FairCirclePlanTogether",
 ] as const;
+
+const ESTIMATE_TEST_USD_ADDRESS =
+  "0x0000000000000000000000000000000000001001" as const satisfies Address;
+const ESTIMATE_FAIR_CIRCLE_ADDRESS =
+  "0x0000000000000000000000000000000000001002" as const satisfies Address;
+const ESTIMATE_FAIR_CIRCLE_USD_ADDRESS =
+  "0x0000000000000000000000000000000000001003" as const satisfies Address;
 
 export type ContractName = (typeof CONTRACT_NAMES)[number];
 
@@ -169,15 +181,25 @@ export async function assertSepoliaChain(publicClient: PublicClient) {
   }
 }
 
+export function noxComputeAddressForChain(chainId: number): Address {
+  const address = NOX_COMPUTE_ADDRESSES[chainId as keyof typeof NOX_COMPUTE_ADDRESSES];
+  if (address === undefined) {
+    throw new Error(`Nox compute address is not configured for chain ID ${chainId}.`);
+  }
+  return address;
+}
+
 export async function assertNoxCompute(publicClient: PublicClient) {
-  const code = await publicClient.getBytecode({ address: NOX_COMPUTE_ADDRESS });
+  const chainId = await publicClient.getChainId();
+  const noxComputeAddress = noxComputeAddressForChain(chainId);
+  const code = await publicClient.getBytecode({ address: noxComputeAddress });
   if (code === undefined || code === "0x") {
     throw new Error(
-      `Expected Nox compute contract has no bytecode at ${NOX_COMPUTE_ADDRESS}.`,
+      `Expected Nox compute contract has no bytecode at ${noxComputeAddress} for chain ID ${chainId}.`,
     );
   }
   return {
-    address: NOX_COMPUTE_ADDRESS,
+    address: noxComputeAddress,
     runtimeBytecodeHash: keccak256(code),
   };
 }
@@ -191,13 +213,14 @@ export async function estimateDeploymentCost(
   artifact: Artifact,
   account: Address,
   args: readonly unknown[] = [],
+  stateOverride?: StateOverride,
 ) {
   const data = encodeDeployData({
     abi: artifact.abi,
     bytecode: artifact.bytecode,
     args,
   });
-  const gas = await publicClient.estimateGas({ account, data });
+  const gas = await publicClient.estimateGas({ account, data, stateOverride });
   const gasPrice = await publicClient.getGasPrice();
   const estimatedCost = gas * gasPrice;
   const bufferedCost = (estimatedCost * 12n) / 10n;
@@ -209,21 +232,36 @@ export async function estimateFullDeploymentCost(
   artifacts: Record<ContractName, Artifact>,
   account: Address,
 ) {
-  const placeholderAddress = account;
   const estimates = {
     TestUSD: await estimateDeploymentCost(publicClient, artifacts.TestUSD, account),
     FairCircleUSD: await estimateDeploymentCost(
       publicClient,
       artifacts.FairCircleUSD,
       account,
-      [placeholderAddress],
+      [ESTIMATE_TEST_USD_ADDRESS],
+      [
+        {
+          address: ESTIMATE_TEST_USD_ADDRESS,
+          code: artifacts.TestUSD.deployedBytecode,
+        },
+      ],
     ),
     FairCircle: await estimateDeploymentCost(publicClient, artifacts.FairCircle, account),
     FairCirclePlanTogether: await estimateDeploymentCost(
       publicClient,
       artifacts.FairCirclePlanTogether,
       account,
-      [placeholderAddress, placeholderAddress],
+      [ESTIMATE_FAIR_CIRCLE_ADDRESS, ESTIMATE_FAIR_CIRCLE_USD_ADDRESS],
+      [
+        {
+          address: ESTIMATE_FAIR_CIRCLE_ADDRESS,
+          code: artifacts.FairCircle.deployedBytecode,
+        },
+        {
+          address: ESTIMATE_FAIR_CIRCLE_USD_ADDRESS,
+          code: artifacts.FairCircleUSD.deployedBytecode,
+        },
+      ],
     ),
   } satisfies Record<
     ContractName,

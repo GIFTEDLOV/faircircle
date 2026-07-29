@@ -19,6 +19,7 @@
     "verify:sepolia": "pnpm --dir contracts verify:sepolia",
     "smoke:sepolia": "pnpm --dir contracts smoke:sepolia",
     "live-e2e:sepolia": "pnpm --dir contracts live-e2e:sepolia",
+    "diagnose:nox-compute": "pnpm --dir contracts diagnose:nox-compute",
     "verify": "pnpm lint:frontend && pnpm build:frontend && pnpm compile:contracts && pnpm test:contracts && pnpm check:size"
   }
 }
