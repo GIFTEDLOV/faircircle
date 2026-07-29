@@ -10,9 +10,6 @@ importers:
 
   contracts:
     devDependencies:
-      '@openzeppelin/contracts':
-        specifier: 5.6.1
-        version: 5.6.1
       '@iexec-nox/handle':
         specifier: 0.1.0-beta.13
         version: 0.1.0-beta.13(ethers@6.17.0)(graphql@16.14.2)(viem@2.55.10(typescript@5.8.3)(zod@3.25.76))
@@ -31,6 +28,12 @@ importers:
       '@nomicfoundation/hardhat-toolbox-viem':
         specifier: 5.0.7
         version: 5.0.7(9ea92bb77da9f2b6e0fa1fa00812b6b1)
+      '@nomicfoundation/hardhat-verify':
+        specifier: 3.0.21
+        version: 3.0.21(hardhat@3.11.1)
+      '@openzeppelin/contracts':
+        specifier: 5.6.1
+        version: 5.6.1
       '@types/node':
         specifier: 26.1.2
         version: 26.1.2

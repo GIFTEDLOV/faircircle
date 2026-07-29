@@ -59,3 +59,41 @@ Mitigation: `IFairCircleCore` omits private-value getters, coordinator getters e
 ## Remaining Metadata Leakage
 
 FairCircle does not provide wallet anonymity. Observers can see organizers, members, room IDs, option costs, selected public cost, recipient address, lifecycle timing, and transaction senders. Public feasibility and affordability booleans intentionally reveal bounded aggregate results.
+
+## Phase 5 Deployment Threats And Mitigations
+
+### Wrong network deployment
+
+Risk: contracts could be deployed to a chain that is not Ethereum Sepolia.
+
+Mitigation: preflight and deployment scripts require live chain ID `11155111` and fail on any mismatch.
+
+### Missing Nox infrastructure
+
+Risk: product contracts could deploy to Sepolia while the configured Nox compute address is absent.
+
+Mitigation: preflight and deployment check runtime bytecode at the installed package's expected Nox compute address before broadcasting FairCircle deployments.
+
+### Secret leakage
+
+Risk: deployer or actor private keys could leak through logs, manifests, committed files, or raw RPC traces.
+
+Mitigation: scripts read secrets only from ignored `.env` files, print public addresses only, never serialize private keys, and `.gitignore` excludes env files, key files, actor-wallet files, temporary deployment files, and raw RPC logs containing sensitive headers.
+
+### Manifest tampering or drift
+
+Risk: recorded deployment evidence could disagree with live chain state.
+
+Mitigation: `verify-sepolia-deployment.ts` checks chain ID, non-zero distinct addresses, live bytecode hashes, deployment receipts, deployment blocks, constructor wiring, initial counters/constants, and manifest git SHA.
+
+### Accidental manifest overwrite
+
+Risk: a new deployment could silently replace previous evidence.
+
+Mitigation: deployment writes atomically and refuses to overwrite `deployments/ethereum-sepolia.json` unless `--force` is supplied. Forced replacement archives the old manifest first.
+
+### Unsafe live E2E shortcuts
+
+Risk: one wallet could be reused to simulate multiple members, invalidating privacy and participant checks.
+
+Mitigation: the live E2E script requires dedicated actor private keys, checks distinct public addresses, checks actor ETH balances, and records blockers instead of fabricating success when prerequisites are unavailable.

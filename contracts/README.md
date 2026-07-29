@@ -23,6 +23,7 @@ pnpm install
 pnpm compile:contracts
 pnpm test:contracts
 pnpm check:size
+pnpm preflight:sepolia
 ```
 
 From this package:
@@ -32,6 +33,11 @@ pnpm compile
 pnpm test
 pnpm check:size
 pnpm deploy:piggy-bank
+pnpm preflight:sepolia
+pnpm deploy:sepolia
+pnpm verify:sepolia
+pnpm smoke:sepolia
+pnpm live-e2e:sepolia
 ```
 
 ## Contracts
@@ -106,6 +112,30 @@ pnpm demo:plan-together
 ```
 
 The demo executes a complete real flow from PlanTogether QuietBudget through capacity-weighted FairSplit, invite-only Private Circle collection, withdrawal, coordinator completion, and recipient unwrap to public tFUSD.
+
+## Ethereum Sepolia Deployment
+
+Phase 5 deployment tooling targets Ethereum Sepolia (`11155111`) and deploys:
+
+1. `TestUSD`
+2. `FairCircleUSD(TestUSD)`
+3. `FairCircle`
+4. `FairCirclePlanTogether(FairCircle, FairCircleUSD)`
+
+Required local variables are `SEPOLIA_RPC_URL` and `DEPLOYER_PRIVATE_KEY`. Optional `ETHERSCAN_API_KEY` enables source verification. Live Nox checks require `NOX_HANDLE_GATEWAY_URL` and `NOX_SUBGRAPH_URL`.
+
+Private keys must stay in root `.env` or `contracts/.env`, both ignored by git. The scripts print public addresses only.
+
+Use:
+
+```bash
+pnpm preflight:sepolia
+pnpm deploy:sepolia
+pnpm verify:sepolia
+pnpm smoke:sepolia
+```
+
+The real deployment manifest is written to `deployments/ethereum-sepolia.json`. Existing manifests require `pnpm deploy:sepolia -- --force` to archive and replace. See `docs/SEPOLIA_DEPLOYMENT.md` and `docs/LIVE_NETWORK_VERIFICATION.md`.
 
 ## Privacy Scope
 

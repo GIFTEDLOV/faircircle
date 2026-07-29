@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "exampleOnly": true,
+  "network": {
+    "name": "ethereum-sepolia",
+    "chainId": 11155111
+  },
+  "deployer": "0x000000000000000000000000000000000000dEaD",
+  "gitCommit": "0000000000000000000000000000000000000000",
+  "timestamp": "2099-01-01T00:00:00.000Z",
+  "nox": {
+    "computeAddress": "0x0000000000000000000000000000000000000001",
+    "runtimeBytecodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "contracts": {
+    "TestUSD": {
+      "address": "0x0000000000000000000000000000000000000002",
+      "constructorArgs": [],
+      "transactionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "blockNumber": "0",
+      "gasUsed": "0",
+      "runtimeBytecodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "FairCircleUSD": {
+      "address": "0x0000000000000000000000000000000000000003",
+      "constructorArgs": [
+        "0x0000000000000000000000000000000000000002"
+      ],
+      "transactionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "blockNumber": "0",
+      "gasUsed": "0",
+      "runtimeBytecodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "FairCircle": {
+      "address": "0x0000000000000000000000000000000000000004",
+      "constructorArgs": [],
+      "transactionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "blockNumber": "0",
+      "gasUsed": "0",
+      "runtimeBytecodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "FairCirclePlanTogether": {
+      "address": "0x0000000000000000000000000000000000000005",
+      "constructorArgs": [
+        "0x0000000000000000000000000000000000000004",
+        "0x0000000000000000000000000000000000000003"
+      ],
+      "transactionHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "blockNumber": "0",
+      "gasUsed": "0",
+      "runtimeBytecodeHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
+    }
+  },
+  "sourceVerification": {
+    "provider": "etherscan",
+    "attempted": false,
+    "status": "skipped",
+    "reason": "Example placeholder only.",
+    "results": {}
+  }
+}

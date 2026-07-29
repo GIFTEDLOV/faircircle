@@ -14,6 +14,11 @@
     "demo:fair-split": "pnpm --dir contracts demo:fair-split",
     "demo:private-circle": "pnpm --dir contracts demo:private-circle",
     "demo:plan-together": "pnpm --dir contracts demo:plan-together",
+    "preflight:sepolia": "pnpm --dir contracts preflight:sepolia",
+    "deploy:sepolia": "pnpm --dir contracts deploy:sepolia",
+    "verify:sepolia": "pnpm --dir contracts verify:sepolia",
+    "smoke:sepolia": "pnpm --dir contracts smoke:sepolia",
+    "live-e2e:sepolia": "pnpm --dir contracts live-e2e:sepolia",
     "verify": "pnpm lint:frontend && pnpm build:frontend && pnpm compile:contracts && pnpm test:contracts && pnpm check:size"
   }
 }

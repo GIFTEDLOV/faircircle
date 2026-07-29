@@ -49,6 +49,9 @@ contracts/
       IFairCircleCore.sol
   test/
   scripts/
+deployments/
+  ethereum-sepolia.example.json
+  README.md
 ```
 
 ## Frontend Architecture
@@ -108,6 +111,18 @@ The coordinator:
 - does not custody tokens or store encrypted values.
 
 The future frontend should hide the multi-transaction sequence behind one Plan Together workflow while preserving these contract boundaries.
+
+## Deployment Architecture
+
+Ethereum Sepolia deployment is handled by scripts in `contracts/scripts/` using Viem and the existing Hardhat 3 workspace:
+
+- `preflight-sepolia.ts` validates environment, chain ID `11155111`, deployer balance, artifacts, and Nox compute bytecode without broadcasting.
+- `deploy-sepolia.ts` compiles, estimates gas, deploys `TestUSD`, `FairCircleUSD`, `FairCircle`, and `FairCirclePlanTogether` in order, validates constructor wiring, and writes `deployments/ethereum-sepolia.json` atomically.
+- `verify-sepolia-deployment.ts` independently validates the manifest against live Sepolia state and optionally verifies source on Etherscan.
+- `smoke-sepolia.ts` runs a bounded live smoke check using the deployment manifest and live Nox handle endpoints.
+- `live-e2e-sepolia.ts` is a stricter multi-wallet Plan Together proof for dedicated test wallets.
+
+The deployment manifest is public evidence only. It records addresses, constructor arguments, transaction hashes, block numbers, gas used, git SHA, and runtime bytecode hashes. It never stores private keys, RPC secrets, encrypted plaintexts, or raw request headers.
 
 ## Data Model Direction
 

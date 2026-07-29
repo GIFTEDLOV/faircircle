@@ -25,6 +25,25 @@ yarn-error.log*
 .env.*
 !.env.example
 *.pem
+*.key
+*.pkey
+*.pk
+*.private
+*.secret
+private-key*
+private-keys*
+actor-wallet*
+actor-wallets*
+wallet-private*
+raw-rpc*.log
+rpc-headers*.log
+*rpc-secrets*.log
+
+# deployment scratch files
+deployments/**/*.tmp
+deployments/**/*.tmp-*
+deployments/**/scratch/
+deployments/**/private/
 
 # OS/editor
 .DS_Store
