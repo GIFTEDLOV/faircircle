@@ -31,18 +31,23 @@ The smoke script requires `NOX_HANDLE_GATEWAY_URL`, `NOX_SUBGRAPH_URL`, and at l
 
 ## Full Multi-Wallet E2E
 
-`pnpm live-e2e:sepolia` executes the complete Plan Together flow only when all actor credentials and endpoints are available:
+`pnpm live-e2e:sepolia` executes the complete Plan Together flow only when all actor credentials and endpoints are available. The minimum setup is four distinct wallets total: deployer, actor 1, actor 2, and actor 3. Actor 3 is also the collection recipient unless `SEPOLIA_RECIPIENT_PRIVATE_KEY` is set for a fifth dedicated recipient wallet.
 
 - deployer organizes the plan and mints test tokens;
 - three actor wallets submit private budget capacities;
 - the coordinator selects an affordable option;
 - actors complete a capacity-weighted FairSplit;
 - actors contribute exact confidential shares into an invite-only Private Circle;
-- the collection withdraws to the recipient;
+- the collection withdraws to actor 3 or the dedicated recipient;
 - the coordinator completes the plan;
 - the recipient unwraps the exact selected amount to public `tFUSD`.
 
-The script refuses to use the deployer as every member. It checks all actor addresses are distinct, each has enough Sepolia ETH, and live Nox endpoints are configured before broadcasting.
+The script refuses to use the deployer as every member. It checks the deployer and actors are mutually distinct, permits the recipient to equal actor 3 intentionally, deduplicates ETH balance checks for repeated recipient/actor wallets, and verifies live Nox endpoints are configured before broadcasting.
+
+The result file records `recipientMode`:
+
+- `actor3`: `SEPOLIA_RECIPIENT_PRIVATE_KEY` was absent and actor 3 was used as recipient.
+- `dedicated`: `SEPOLIA_RECIPIENT_PRIVATE_KEY` was set.
 
 Results are written to:
 

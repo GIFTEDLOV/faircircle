@@ -22,9 +22,8 @@ Full live E2E additionally requires:
 - `SEPOLIA_ACTOR_1_PRIVATE_KEY`
 - `SEPOLIA_ACTOR_2_PRIVATE_KEY`
 - `SEPOLIA_ACTOR_3_PRIVATE_KEY`
-- `SEPOLIA_RECIPIENT_PRIVATE_KEY`
 
-These actor wallets must be distinct and funded with Sepolia ETH.
+`SEPOLIA_RECIPIENT_PRIVATE_KEY` is optional. When absent, actor 3 is also the Private Circle collection recipient. When present, the script uses that dedicated recipient wallet. The deployer and three actors must be mutually distinct and funded with Sepolia ETH; a recipient that equals actor 3 is allowed intentionally and is checked only once for ETH balance.
 
 ## Deployment Order
 

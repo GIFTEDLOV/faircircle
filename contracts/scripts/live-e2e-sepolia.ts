@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import { createViemHandleClient, type HandleClient } from "@iexec-nox/handle";
 import {
-  createWalletClient,
   encodeAbiParameters,
-  http,
   parseEventLogs,
   type Abi,
   type Address,
@@ -11,17 +9,18 @@ import {
   type PublicClient,
   type WalletClient,
 } from "viem";
-import { privateKeyToAccount } from "viem/accounts";
-import { sepolia } from "viem/chains";
 import {
-  assertDistinctAddresses,
+  requireAccount,
+  resolveLiveE2ERoles,
+  type RecipientMode,
+} from "./live-e2e-roles.js";
+import {
   assertSepoliaChain,
   createSepoliaClients,
   LIVE_E2E_PATH,
   loadArtifacts,
   loadSepoliaEnv,
   noxComputeAddressForChain,
-  normalizePrivateKey,
   oneHourFromNow,
   optionalEnv,
   readDeploymentManifest,
@@ -68,28 +67,32 @@ async function main() {
   await assertSepoliaChain(publicClient);
   const noxComputeAddress = noxComputeAddressForChain(await publicClient.getChainId());
 
-  const actors = actorWallets();
-  const actorAddresses = actors.map((wallet) => requireAccount(wallet));
-  const recipient = requireAccount(recipientWallet());
-  assertDistinctAddresses({
+  const roles = resolveLiveE2ERoles({
     deployer,
-    actor1: actorAddresses[0],
-    actor2: actorAddresses[1],
-    actor3: actorAddresses[2],
-    recipient,
+    deployerWallet,
+    rpcUrl: requiredEnv("SEPOLIA_RPC_URL"),
+    actorPrivateKeys: [
+      requiredEnv("SEPOLIA_ACTOR_1_PRIVATE_KEY"),
+      requiredEnv("SEPOLIA_ACTOR_2_PRIVATE_KEY"),
+      requiredEnv("SEPOLIA_ACTOR_3_PRIVATE_KEY"),
+    ],
+    recipientPrivateKey: optionalEnv("SEPOLIA_RECIPIENT_PRIVATE_KEY"),
   });
+  const { actors, actorAddresses, recipient, recipientMode, recipientWallet } = roles;
 
-  await assertActorBalances(publicClient, [deployerWallet, ...actors, recipientWallet()]);
+  await assertActorBalances(publicClient, roles.walletsForBalanceChecks);
 
-  const clients = await Promise.all(
-    [deployerWallet, ...actors, recipientWallet()].map((wallet) =>
-      createViemHandleClient(scopedWallet(wallet), {
-        smartContractAddress: noxComputeAddress,
-        gatewayUrl,
-        subgraphUrl,
-      }),
-    ),
+  const clientsByAddress = await createHandleClientsByAddress(
+    roles.walletsForHandleClients,
+    noxComputeAddress,
+    gatewayUrl,
+    subgraphUrl,
   );
+  const deployerClient = handleClientFor(clientsByAddress, deployer);
+  const actorClients = actorAddresses.map((address) =>
+    handleClientFor(clientsByAddress, address),
+  ) as [HandleClient, HandleClient, HandleClient];
+  const recipientClient = handleClientFor(clientsByAddress, recipient);
 
   const testUsd = manifest.contracts.TestUSD.address;
   const cUsd = manifest.contracts.FairCircleUSD.address;
@@ -150,7 +153,7 @@ async function main() {
     fairCircle,
     artifacts.FairCircle.abi,
     actors,
-    clients,
+    actorClients,
     budgetRoomId,
     [60n, 60n, 40n],
     txs,
@@ -164,7 +167,7 @@ async function main() {
       functionName: "getAffordabilityHandle",
       args: [budgetRoomId, BigInt(i)],
     })) as Hex;
-    const proof = await clients[0].publicDecrypt(handle);
+    const proof = await deployerClient.publicDecrypt(handle);
     affordability.push(Boolean(proof.value));
     txs[`finalize affordability ${i}`] = await send(
       publicClient,
@@ -224,7 +227,7 @@ async function main() {
     fairCircle,
     artifacts.FairCircle.abi,
     actors,
-    clients,
+    actorClients,
     splitRoomId,
     [40n, 50n, 60n],
     txs,
@@ -292,7 +295,7 @@ async function main() {
       artifacts.FairCircleUSD.abi,
       fairCircle,
       actors[i],
-      clients[i + 1],
+      actorClients[i],
       collectionRoomId,
       shares[i],
     );
@@ -305,7 +308,7 @@ async function main() {
       functionName: "getContributionPositivityHandle",
       args: [contributionIds[i]],
     })) as Hex;
-    const proof = await clients[0].publicDecrypt(handle);
+    const proof = await deployerClient.publicDecrypt(handle);
     assert.equal(proof.value, true);
     txs[`finalize contribution ${i + 1}`] = await send(
       publicClient,
@@ -323,7 +326,7 @@ async function main() {
     functionName: "getCollectionTargetHandle",
     args: [collectionRoomId],
   })) as Hex;
-  const targetProof = await clients[0].publicDecrypt(targetHandle);
+  const targetProof = await deployerClient.publicDecrypt(targetHandle);
   assert.equal(targetProof.value, true);
   txs["finalize collection target"] = await send(
     publicClient,
@@ -356,7 +359,7 @@ async function main() {
     functionName: "getWithdrawalSuccessHandle",
     args: [collectionRoomId],
   })) as Hex;
-  const withdrawalProof = await clients[0].publicDecrypt(withdrawalHandle);
+  const withdrawalProof = await deployerClient.publicDecrypt(withdrawalHandle);
   assert.equal(withdrawalProof.value, true);
   txs["finalize withdrawal"] = await send(
     publicClient,
@@ -389,7 +392,9 @@ async function main() {
     functionName: "confidentialBalanceOf",
     args: [recipient],
   })) as Hex;
-  const recipientConfidentialBalance = await clients[4].decrypt(recipientBalanceHandle);
+  const recipientConfidentialBalance = await recipientClient.decrypt(
+    recipientBalanceHandle,
+  );
   assert.equal(recipientConfidentialBalance.value, 150n);
 
   const recipientPublicBefore = (await publicClient.readContract({
@@ -398,10 +403,10 @@ async function main() {
     functionName: "balanceOf",
     args: [recipient],
   })) as bigint;
-  const unwrapInput = await clients[4].encryptInput(150n, "uint256", cUsd);
+  const unwrapInput = await recipientClient.encryptInput(150n, "uint256", cUsd);
   txs["unwrap request"] = await send(
     publicClient,
-    recipientWallet(),
+    recipientWallet,
     cUsd,
     artifacts.FairCircleUSD.abi,
     "unwrap",
@@ -416,7 +421,7 @@ async function main() {
     logs: unwrapReceipt.logs,
   });
   const unwrapHandle = (unwrapEvent.args as { amount: Hex }).amount;
-  const unwrapProof = await clients[0].publicDecrypt(unwrapHandle);
+  const unwrapProof = await deployerClient.publicDecrypt(unwrapHandle);
   assert.equal(unwrapProof.value, 150n);
   txs["finalize unwrap"] = await send(
     publicClient,
@@ -487,6 +492,7 @@ async function main() {
     deployer,
     actors: actorAddresses,
     recipient,
+    recipientMode,
     planId: planId.toString(),
     budgetRoomId: budgetRoomId.toString(),
     splitRoomId: splitRoomId.toString(),
@@ -512,7 +518,6 @@ async function preflightBlocker() {
     "SEPOLIA_ACTOR_1_PRIVATE_KEY",
     "SEPOLIA_ACTOR_2_PRIVATE_KEY",
     "SEPOLIA_ACTOR_3_PRIVATE_KEY",
-    "SEPOLIA_RECIPIENT_PRIVATE_KEY",
   ].filter((name) => optionalEnv(name) === undefined);
   if (missing.length > 0) {
     return `Missing required live E2E environment variables: ${missing.join(", ")}`;
@@ -526,6 +531,7 @@ async function writeBlockedResult(blocker: string) {
     network: { name: "ethereum-sepolia", chainId: 11155111 },
     status: "blocked",
     timestamp: new Date().toISOString(),
+    recipientMode: detectRecipientMode(),
     blocker,
   });
 }
@@ -541,7 +547,7 @@ async function submitBudgetCapacities(
   txs: TxLog,
 ) {
   for (let i = 0; i < actors.length; i += 1) {
-    const input = await clients[i + 1].encryptInput(capacities[i], "uint256", fairCircle);
+    const input = await clients[i].encryptInput(capacities[i], "uint256", fairCircle);
     txs[`submit budget capacity ${i + 1}`] = await send(
       publicClient,
       actors[i],
@@ -564,7 +570,7 @@ async function submitSplitAndDecryptShares(
   txs: TxLog,
 ) {
   for (let i = 0; i < actors.length; i += 1) {
-    const input = await clients[i + 1].encryptInput(capacities[i], "uint256", fairCircle);
+    const input = await clients[i].encryptInput(capacities[i], "uint256", fairCircle);
     txs[`submit split capacity ${i + 1}`] = await send(
       publicClient,
       actors[i],
@@ -600,7 +606,7 @@ async function submitSplitAndDecryptShares(
       args: [roomId],
       account: requireAccount(actors[i]),
     })) as Hex;
-    shares.push((await clients[i + 1].decrypt(handle)).value as bigint);
+    shares.push((await clients[i].decrypt(handle)).value as bigint);
   }
   return shares;
 }
@@ -656,26 +662,6 @@ async function assertActorBalances(publicClient: PublicClient, wallets: WalletCl
   }
 }
 
-function actorWallets() {
-  return [
-    "SEPOLIA_ACTOR_1_PRIVATE_KEY",
-    "SEPOLIA_ACTOR_2_PRIVATE_KEY",
-    "SEPOLIA_ACTOR_3_PRIVATE_KEY",
-  ].map((name) => walletFromPrivateKey(requiredEnv(name)));
-}
-
-function recipientWallet() {
-  return walletFromPrivateKey(requiredEnv("SEPOLIA_RECIPIENT_PRIVATE_KEY"));
-}
-
-function walletFromPrivateKey(value: string) {
-  return createWalletClient({
-    account: privateKeyToAccount(normalizePrivateKey(value)),
-    chain: sepolia,
-    transport: http(requiredEnv("SEPOLIA_RPC_URL")),
-  });
-}
-
 function requiredEnv(name: string) {
   const value = optionalEnv(name);
   if (value === undefined) {
@@ -684,13 +670,39 @@ function requiredEnv(name: string) {
   return value;
 }
 
-function requireAccount(wallet: WalletClient): Address {
-  assert.ok(wallet.account, "wallet account is available");
-  return wallet.account.address;
-}
-
 function roomData(roomId: bigint) {
   return encodeAbiParameters([{ type: "uint256" }], [roomId]);
+}
+
+async function createHandleClientsByAddress(
+  wallets: WalletClient[],
+  smartContractAddress: Address,
+  gatewayUrl: string,
+  subgraphUrl: string,
+) {
+  const entries = await Promise.all(
+    wallets.map(async (wallet) => [
+      requireAccount(wallet).toLowerCase(),
+      await createViemHandleClient(scopedWallet(wallet), {
+        smartContractAddress,
+        gatewayUrl,
+        subgraphUrl,
+      }),
+    ] as const),
+  );
+  return new Map<string, HandleClient>(entries);
+}
+
+function handleClientFor(clientsByAddress: Map<string, HandleClient>, address: Address) {
+  const client = clientsByAddress.get(address.toLowerCase());
+  assert.ok(client, `handle client available for ${address}`);
+  return client;
+}
+
+function detectRecipientMode(): RecipientMode {
+  return optionalEnv("SEPOLIA_RECIPIENT_PRIVATE_KEY") === undefined
+    ? "actor3"
+    : "dedicated";
 }
 
 function scopedWallet(wallet: WalletClient) {

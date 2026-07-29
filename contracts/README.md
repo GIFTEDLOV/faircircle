@@ -122,7 +122,7 @@ Phase 5 deployment tooling targets Ethereum Sepolia (`11155111`) and deploys:
 3. `FairCircle`
 4. `FairCirclePlanTogether(FairCircle, FairCircleUSD)`
 
-Required local variables are `SEPOLIA_RPC_URL` and `DEPLOYER_PRIVATE_KEY`. Optional `ETHERSCAN_API_KEY` enables source verification. Live Nox checks require `NOX_HANDLE_GATEWAY_URL` and `NOX_SUBGRAPH_URL`.
+Required local variables are `SEPOLIA_RPC_URL` and `DEPLOYER_PRIVATE_KEY`. Optional `ETHERSCAN_API_KEY` enables source verification. Live Nox checks require `NOX_HANDLE_GATEWAY_URL` and `NOX_SUBGRAPH_URL`. The full live E2E needs deployer plus three distinct actor wallets; actor 3 is the recipient unless optional `SEPOLIA_RECIPIENT_PRIVATE_KEY` provides a fifth wallet.
 
 Private keys must stay in root `.env` or `contracts/.env`, both ignored by git. The scripts print public addresses only.
 
