@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { createViemHandleClient, type HandleClient } from "@iexec-nox/handle";
 import {
   parseEventLogs,
@@ -37,9 +40,25 @@ import {
   safeErrorMessage,
   type HistoricalEventLog,
 } from "./rpc-event-reader.js";
+import {
+  classifyTargetUnwrapState,
+  deriveTargetRecoveryContext,
+  enumeratePlans,
+  enumerateRecipientCollections,
+  minBlock,
+  reconstructBalanceLineage,
+  unwrapStateForRecipient,
+  type RecipientDiagnosisReport,
+  type TargetRecoveryContext,
+  type TargetUnwrapState,
+} from "./recipient-balance-lineage.js";
 
 const LIVE_TITLE = "Sepolia live Plan Together";
-const EXPECTED_SELECTED_COST = 150n;
+const DIAGNOSIS_PATH = resolve(
+  "..",
+  "deployments",
+  "ethereum-sepolia-recipient-balance-diagnosis.json",
+);
 
 type EvidenceValue = Hex[] | "unavailable";
 type RecoveredEvidence = Record<string, EvidenceValue>;
@@ -94,6 +113,8 @@ async function main() {
   const fairCircle = manifest.contracts.FairCircle.address;
   const coordinator = manifest.contracts.FairCirclePlanTogether.address;
   const fromBlock = minBlock(
+    manifest.contracts.TestUSD.blockNumber,
+    manifest.contracts.FairCircleUSD.blockNumber,
     manifest.contracts.FairCircle.blockNumber,
     manifest.contracts.FairCirclePlanTogether.blockNumber,
   );
@@ -102,7 +123,73 @@ async function main() {
     logger: (message) => console.log(message),
   });
 
-  const planId = await latestPlanId(publicClient, coordinator, artifacts.FairCirclePlanTogether.abi);
+  const clientsByAddress = await createHandleClientsByAddress(
+    roles.walletsForHandleClients,
+    noxComputeAddress,
+    gatewayUrl,
+    subgraphUrl,
+  );
+  const deployerClient = handleClientFor(clientsByAddress, deployer);
+  const recipientClient = handleClientFor(clientsByAddress, roles.recipient);
+
+  const plans = await enumeratePlans({
+    publicClient,
+    eventReader,
+    coordinator,
+    abi: artifacts.FairCirclePlanTogether.abi,
+    deployer,
+    fromBlock,
+    toBlock: recoveryToBlock,
+  });
+  const collections = await enumerateRecipientCollections({
+    publicClient,
+    eventReader,
+    fairCircle,
+    coordinator,
+    abi: artifacts.FairCircle.abi,
+    coordinatorAbi: artifacts.FairCirclePlanTogether.abi,
+    cUsd,
+    recipient: roles.recipient,
+    fromBlock,
+    toBlock: recoveryToBlock,
+  });
+
+  const recipientBalanceHandle = (await publicClient.readContract({
+    address: cUsd,
+    abi: artifacts.FairCircleUSD.abi,
+    functionName: "confidentialBalanceOf",
+    args: [roles.recipient],
+  })) as Hex;
+  const recipientConfidentialBalance = await recipientClient.decrypt(
+    recipientBalanceHandle,
+  );
+  const recipientConfidentialBalanceValue = recipientConfidentialBalance.value as bigint;
+
+  const lineage = await reconstructBalanceLineage({
+    eventReader,
+    recipientClient,
+    cUsd,
+    fairCircle,
+    cUsdAbi: artifacts.FairCircleUSD.abi,
+    fairCircleAbi: artifacts.FairCircle.abi,
+    recipient: roles.recipient,
+    plans,
+    collections,
+    fromBlock,
+    toBlock: recoveryToBlock,
+  });
+  const diagnosis = await readDiagnosisReport();
+  const target = deriveTargetRecoveryContext({
+    plans,
+    collections,
+    ledger: lineage.ledger,
+    currentRecipientBalance: recipientConfidentialBalanceValue,
+    recipient: roles.recipient,
+    diagnosis,
+    explicitPlanId: optionalEnv("SEPOLIA_RECOVERY_PLAN_ID"),
+  });
+
+  const planId = target.targetPlanId;
   const finalPlan = asPlanView(await publicClient.readContract({
     address: coordinator,
     abi: artifacts.FairCirclePlanTogether.abi,
@@ -113,7 +200,7 @@ async function main() {
   assertAddressEqual(finalPlan.organizer, deployer, "plan organizer");
   assert.equal(finalPlan.title, LIVE_TITLE, "plan title");
   assertPlanComplete(finalPlan);
-  assert.equal(finalPlan.selectedCost, EXPECTED_SELECTED_COST, "selected cost");
+  assert.equal(finalPlan.selectedCost, target.targetSelectedCost, "selected cost");
   assertAddressEqual(finalPlan.intendedRecipient, roles.recipient, "intended recipient");
   assertNonZero(finalPlan.budgetRoomId, "budget room ID");
   assertNonZero(finalPlan.splitRoomId, "split room ID");
@@ -176,24 +263,15 @@ async function main() {
     throw new Error("Unable to recover contribution IDs for confidentiality ACL checks.");
   }
 
-  const clientsByAddress = await createHandleClientsByAddress(
-    roles.walletsForHandleClients,
-    noxComputeAddress,
-    gatewayUrl,
-    subgraphUrl,
-  );
-  const deployerClient = handleClientFor(clientsByAddress, deployer);
-  const recipientClient = handleClientFor(clientsByAddress, roles.recipient);
-
-  const recipientBalanceHandle = (await publicClient.readContract({
-    address: cUsd,
+  const unwrapState = await unwrapStateForRecipient({
+    eventReader,
+    recipientClient,
+    cUsd,
     abi: artifacts.FairCircleUSD.abi,
-    functionName: "confidentialBalanceOf",
-    args: [roles.recipient],
-  })) as Hex;
-  const recipientConfidentialBalance = await recipientClient.decrypt(
-    recipientBalanceHandle,
-  );
+    recipient: roles.recipient,
+    fromBlock,
+    toBlock: recoveryToBlock,
+  });
 
   const planCompletedBlock = planCompletedLog.blockNumber;
   const unwrapRecovery = await resumeOrVerifyUnwrap({
@@ -208,7 +286,9 @@ async function main() {
     cUsd,
     cUsdAbi: artifacts.FairCircleUSD.abi,
     recipient: roles.recipient,
-    recipientConfidentialBalance: recipientConfidentialBalance.value as bigint,
+    target,
+    unwrapState,
+    recipientConfidentialBalance: recipientConfidentialBalanceValue,
     fromBlock: planCompletedBlock,
     toBlock: recoveryToBlock,
   });
@@ -266,33 +346,33 @@ async function main() {
     recipient: roles.recipient,
     recipientMode: roles.recipientMode,
     planId: planId.toString(),
+    targetPlanId: target.targetPlanId.toString(),
     budgetRoomId: finalPlan.budgetRoomId.toString(),
     splitRoomId: finalPlan.splitRoomId.toString(),
     collectionRoomId: finalPlan.collectionRoomId.toString(),
-    selectedCost: EXPECTED_SELECTED_COST.toString(),
+    targetCollectionRoomId: target.targetCollectionRoomId.toString(),
+    selectedCost: target.targetSelectedCost.toString(),
+    targetSelectedCost: target.targetSelectedCost.toString(),
+    recipientBalanceBeforeRecovery: target.currentRecipientBalance.toString(),
+    preExistingRecipientBalance: target.preExistingRecipientBalance.toString(),
+    targetWithdrawalCredit: target.targetWithdrawalCredit.toString(),
+    expectedBalanceBeforeUnwrap: target.expectedBalanceBeforeUnwrap.toString(),
+    remainingConfidentialBalance: unwrapRecovery.remainingConfidentialBalance.toString(),
+    targetWithdrawalTransactionHash: target.targetWithdrawalTransactionHash,
     recoveredTransactionHashes: evidence,
     unwrapTransactionHashes: unwrapRecovery.transactionHashes,
     recipientPublicDelta: unwrapRecovery.publicDelta.toString(),
     confidentialityChecks,
+    fixedSnapshotBlock: recoveryToBlock.toString(),
     recoveryEventSnapshotBlock: recoveryToBlock.toString(),
     coordinatorConfidentialTransferEvents: coordinatorTransferCount,
     coordinatorTransferCount,
     idempotency: unwrapRecovery.idempotency,
+    idempotencyState: unwrapRecovery.idempotency,
+    balanceLedgerReconciliation: target.balanceLedgerReconciliation,
   });
 
   console.log(`Resumed live Plan Together E2E passed. Result: ${LIVE_E2E_PATH}`);
-}
-
-async function latestPlanId(publicClient: PublicClient, coordinator: Address, abi: Abi) {
-  const nextPlanId = (await publicClient.readContract({
-    address: coordinator,
-    abi,
-    functionName: "nextPlanId",
-  })) as bigint;
-  if (nextPlanId <= 1n) {
-    throw new Error("No Plan Together plan exists to resume.");
-  }
-  return nextPlanId - 1n;
 }
 
 async function recoverEvidenceLogs(
@@ -338,7 +418,6 @@ async function recoverEvidenceLogs(
 
 async function resumeOrVerifyUnwrap({
   publicClient,
-  eventReader,
   deployerWallet,
   recipientWallet,
   deployerClient,
@@ -348,12 +427,12 @@ async function resumeOrVerifyUnwrap({
   cUsd,
   cUsdAbi,
   recipient,
+  target,
+  unwrapState,
   recipientConfidentialBalance,
   fromBlock,
-  toBlock,
 }: {
   publicClient: PublicClient;
-  eventReader: HistoricalEventReader;
   deployerWallet: WalletClient;
   recipientWallet: WalletClient;
   deployerClient: HandleClient;
@@ -363,64 +442,56 @@ async function resumeOrVerifyUnwrap({
   cUsd: Address;
   cUsdAbi: Abi;
   recipient: Address;
+  target: TargetRecoveryContext;
+  unwrapState: ReturnType<typeof unwrapStateForRecipient> extends Promise<infer T> ? T : never;
   recipientConfidentialBalance: bigint;
   fromBlock: bigint;
-  toBlock: bigint;
 }) {
-  const existingFinalized = await findFinalizedUnwrap(
-    eventReader,
-    cUsd,
-    cUsdAbi,
-    recipient,
-    fromBlock,
-    toBlock,
-  );
-  if (existingFinalized !== undefined) {
-    if (recipientConfidentialBalance !== 0n) {
-      throw new Error(
-        `Expected recipient cFUSD balance 0 after completed unwrap, got ${recipientConfidentialBalance.toString()}.`,
-      );
-    }
+  const targetUnwrapState = classifyTargetUnwrapState({
+    unwrapState,
+    planCompletedBlock: fromBlock,
+    selectedCost: target.targetSelectedCost,
+    currentRecipientBalance: recipientConfidentialBalance,
+    preExistingRecipientBalance: target.preExistingRecipientBalance,
+  });
+
+  if (targetUnwrapState.idempotency === "already-finalized") {
+    await assertFinalizeCreditedPublicToken({
+      publicClient,
+      testUsd,
+      testUsdAbi,
+      recipient,
+      selectedCost: target.targetSelectedCost,
+      finalizeHash: targetUnwrapState.finalized.transactionHash,
+    });
     return {
       idempotency: "already-finalized",
-      publicDelta: EXPECTED_SELECTED_COST,
+      publicDelta: target.targetSelectedCost,
+      remainingConfidentialBalance: target.expectedRemainingConfidentialBalance,
       transactionHashes: {
-        unwrapRequest: existingFinalized.requestHash ?? "unavailable",
-        finalizeUnwrap: existingFinalized.finalizeHash,
+        unwrapRequest: targetUnwrapState.request.transactionHash,
+        finalizeUnwrap: targetUnwrapState.finalized.transactionHash,
       },
     };
   }
 
-  const pending = await findPendingUnwrap(
-    eventReader,
-    publicClient,
-    cUsd,
-    cUsdAbi,
-    recipient,
-    fromBlock,
-    toBlock,
-  );
-  if (pending !== undefined) {
-    if (recipientConfidentialBalance !== 0n) {
-      throw new Error(
-        `Expected recipient cFUSD balance 0 after pending unwrap request, got ${recipientConfidentialBalance.toString()}.`,
-      );
-    }
+  if (targetUnwrapState.idempotency === "pending-unwrap") {
     const recipientPublicBefore = await publicBalance(
       publicClient,
       testUsd,
       testUsdAbi,
       recipient,
     );
-    const unwrapProof = await deployerClient.publicDecrypt(pending.handle);
-    assert.equal(unwrapProof.value, EXPECTED_SELECTED_COST);
+    const pendingHandle = requireUnwrapHandle(targetUnwrapState);
+    const unwrapProof = await deployerClient.publicDecrypt(pendingHandle);
+    assert.equal(unwrapProof.value, target.targetSelectedCost);
     const finalizeHash = await send(
       publicClient,
       deployerWallet,
       cUsd,
       cUsdAbi,
       "finalizeUnwrap",
-      [pending.handle, unwrapProof.decryptionProof],
+      [pendingHandle, unwrapProof.decryptionProof],
     );
     const recipientPublicAfter = await publicBalance(
       publicClient,
@@ -428,21 +499,28 @@ async function resumeOrVerifyUnwrap({
       testUsdAbi,
       recipient,
     );
-    assert.equal(recipientPublicAfter - recipientPublicBefore, EXPECTED_SELECTED_COST);
+    assert.equal(recipientPublicAfter - recipientPublicBefore, target.targetSelectedCost);
+    const remainingConfidentialBalance = await readCurrentConfidentialBalance(
+      publicClient,
+      recipientClient,
+      cUsd,
+      cUsdAbi,
+      recipient,
+    );
+    assert.equal(
+      remainingConfidentialBalance,
+      target.expectedRemainingConfidentialBalance,
+      "remaining recipient cFUSD balance",
+    );
     return {
       idempotency: "finalized-pending-unwrap",
       publicDelta: recipientPublicAfter - recipientPublicBefore,
+      remainingConfidentialBalance,
       transactionHashes: {
-        unwrapRequest: pending.transactionHash,
+        unwrapRequest: targetUnwrapState.request.transactionHash,
         finalizeUnwrap: finalizeHash,
       },
     };
-  }
-
-  if (recipientConfidentialBalance !== EXPECTED_SELECTED_COST) {
-    throw new Error(
-      `Expected recipient cFUSD balance ${EXPECTED_SELECTED_COST.toString()} before unwrap, got ${recipientConfidentialBalance.toString()}.`,
-    );
   }
 
   const recipientPublicBefore = await publicBalance(
@@ -452,7 +530,7 @@ async function resumeOrVerifyUnwrap({
     recipient,
   );
   const unwrapInput = await recipientClient.encryptInput(
-    EXPECTED_SELECTED_COST,
+    target.targetSelectedCost,
     "uint256",
     cUsd,
   );
@@ -473,7 +551,7 @@ async function resumeOrVerifyUnwrap({
   assert.ok(unwrapEvent, "UnwrapRequested event emitted");
   const unwrapHandle = (unwrapEvent.args as { amount: Hex }).amount;
   const unwrapProof = await deployerClient.publicDecrypt(unwrapHandle);
-  assert.equal(unwrapProof.value, EXPECTED_SELECTED_COST);
+  assert.equal(unwrapProof.value, target.targetSelectedCost);
   const finalizeHash = await send(
     publicClient,
     deployerWallet,
@@ -488,105 +566,29 @@ async function resumeOrVerifyUnwrap({
     testUsdAbi,
     recipient,
   );
-  assert.equal(recipientPublicAfter - recipientPublicBefore, EXPECTED_SELECTED_COST);
+  assert.equal(recipientPublicAfter - recipientPublicBefore, target.targetSelectedCost);
+  const remainingConfidentialBalance = await readCurrentConfidentialBalance(
+    publicClient,
+    recipientClient,
+    cUsd,
+    cUsdAbi,
+    recipient,
+  );
+  assert.equal(
+    remainingConfidentialBalance,
+    target.expectedRemainingConfidentialBalance,
+    "remaining recipient cFUSD balance",
+  );
 
   return {
     idempotency: "fresh-unwrap",
     publicDelta: recipientPublicAfter - recipientPublicBefore,
+    remainingConfidentialBalance,
     transactionHashes: {
       unwrapRequest: unwrapHash,
       finalizeUnwrap: finalizeHash,
     },
   };
-}
-
-async function findFinalizedUnwrap(
-  eventReader: HistoricalEventReader,
-  cUsd: Address,
-  cUsdAbi: Abi,
-  recipient: Address,
-  fromBlock: bigint,
-  toBlock: bigint,
-) {
-  const finalized = (await readMandatoryEvents(
-    eventReader,
-    cUsd,
-    cUsdAbi,
-    "UnwrapFinalized",
-    { receiver: recipient },
-    fromBlock,
-    toBlock,
-  )).filter((log) => BigInt(log.args?.plaintextAmount as bigint) === EXPECTED_SELECTED_COST);
-  const [event] = finalized;
-  if (event === undefined) {
-    return undefined;
-  }
-  const encryptedAmount = event.args?.encryptedAmount as Hex | undefined;
-  const request = encryptedAmount
-    ? (await readMandatoryEvents(
-        eventReader,
-        cUsd,
-        cUsdAbi,
-        "UnwrapRequested",
-        { receiver: recipient },
-        fromBlock,
-        toBlock,
-      )).find(
-      (log) => lower(log.args?.amount as Hex | undefined) === lower(encryptedAmount),
-    )
-    : undefined;
-  return {
-    finalizeHash: event.transactionHash,
-    requestHash: request?.transactionHash,
-  };
-}
-
-async function findPendingUnwrap(
-  eventReader: HistoricalEventReader,
-  publicClient: PublicClient,
-  cUsd: Address,
-  cUsdAbi: Abi,
-  recipient: Address,
-  fromBlock: bigint,
-  toBlock: bigint,
-) {
-  const requests = await readMandatoryEvents(
-    eventReader,
-    cUsd,
-    cUsdAbi,
-    "UnwrapRequested",
-    { receiver: recipient },
-    fromBlock,
-    toBlock,
-  );
-  const finalized = await readMandatoryEvents(
-    eventReader,
-    cUsd,
-    cUsdAbi,
-    "UnwrapFinalized",
-    { receiver: recipient },
-    fromBlock,
-    toBlock,
-  );
-  const finalizedHandles = new Set(
-    finalized.map((log) => lower(log.args?.encryptedAmount as Hex | undefined)),
-  );
-  for (const request of requests) {
-    const handle = request.args?.amount as Hex | undefined;
-    if (handle === undefined || finalizedHandles.has(lower(handle))) {
-      continue;
-    }
-    const requester = (await publicClient.readContract({
-      address: cUsd,
-      abi: cUsdAbi,
-      functionName: "unwrapRequester",
-      args: [handle],
-    })) as Address;
-    if (requester.toLowerCase() === recipient.toLowerCase()) {
-      return { handle, transactionHash: request.transactionHash };
-    }
-  }
-  return undefined;
 }
 
 function contributionIdsFromLogs(logs: HistoricalEventLog[]) {
@@ -780,6 +782,73 @@ async function publicBalance(
   }) as Promise<bigint>;
 }
 
+async function readCurrentConfidentialBalance(
+  publicClient: PublicClient,
+  recipientClient: HandleClient,
+  cUsd: Address,
+  cUsdAbi: Abi,
+  recipient: Address,
+) {
+  const handle = (await publicClient.readContract({
+    address: cUsd,
+    abi: cUsdAbi,
+    functionName: "confidentialBalanceOf",
+    args: [recipient],
+  })) as Hex;
+  return (await recipientClient.decrypt(handle)).value as bigint;
+}
+
+async function assertFinalizeCreditedPublicToken({
+  publicClient,
+  testUsd,
+  testUsdAbi,
+  recipient,
+  selectedCost,
+  finalizeHash,
+}: {
+  publicClient: PublicClient;
+  testUsd: Address;
+  testUsdAbi: Abi;
+  recipient: Address;
+  selectedCost: bigint;
+  finalizeHash: Hex;
+}) {
+  const receipt = await publicClient.getTransactionReceipt({ hash: finalizeHash });
+  assertReceiptSuccess(receipt, `finalized unwrap ${finalizeHash}`);
+  const credited = parseEventLogs({
+    abi: testUsdAbi,
+    eventName: "Transfer",
+    logs: receipt.logs,
+  })
+    .filter((event) => event.address.toLowerCase() === testUsd.toLowerCase())
+    .reduce((sum, event) => {
+      const args = event.args as { to?: Address; value?: bigint };
+      return args.to?.toLowerCase() === recipient.toLowerCase()
+        ? sum + BigInt(args.value ?? 0n)
+        : sum;
+    }, 0n);
+  assert.equal(
+    credited,
+    selectedCost,
+    "already-finalized unwrap public tFUSD credit",
+  );
+}
+
+function requireUnwrapHandle(state: TargetUnwrapState) {
+  if (!("request" in state) || state.request.encryptedHandle === null) {
+    throw new Error("Target unwrap request is missing its encrypted amount handle.");
+  }
+  return state.request.encryptedHandle;
+}
+
+async function readDiagnosisReport() {
+  if (!existsSync(DIAGNOSIS_PATH)) {
+    return undefined;
+  }
+  const raw = await readFile(DIAGNOSIS_PATH, "utf8");
+  return JSON.parse(raw) as RecipientDiagnosisReport;
+}
+
 async function createHandleClientsByAddress(
   wallets: WalletClient[],
   smartContractAddress: Address,
@@ -839,23 +908,12 @@ function assertAddressEqual(actual: Address, expected: Address, label: string) {
   }
 }
 
-function minBlock(...values: string[]) {
-  return values.reduce((min, value) => {
-    const block = BigInt(value);
-    return block < min ? block : min;
-  }, BigInt(values[0]));
-}
-
 function requiredEnv(name: string) {
   const value = optionalEnv(name);
   if (value === undefined) {
     throw new Error(`${name} is required.`);
   }
   return value;
-}
-
-function lower(value: Hex | undefined) {
-  return value?.toLowerCase() ?? "";
 }
 
 await runSepoliaScript(main);

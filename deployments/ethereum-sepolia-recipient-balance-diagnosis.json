@@ -1,0 +1,256 @@
+{
+  "schemaVersion": 1,
+  "status": "diagnosed",
+  "network": {
+    "name": "ethereum-sepolia",
+    "chainId": 11155111
+  },
+  "fixedSnapshotBlock": "11376436",
+  "timestamp": "2026-07-29T15:43:54.406Z",
+  "deploymentManifest": {
+    "deployer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+    "gitCommit": "d2c722a0951a1e0f9bc18962c43c8872e5924a64",
+    "contracts": {
+      "TestUSD": "0x713dd4c2b2f52d7c9fb848fcb5bbf49e1c0a89db",
+      "FairCircleUSD": "0xded7d0ee8508f8fde4d66e44ad3e41835bdcaf16",
+      "FairCircle": "0x0ee2037dc4337a322082356d3d611e285f6b8b7b",
+      "FairCirclePlanTogether": "0x49f20aed2002bd14202b34f0e72e01ae43c91060"
+    },
+    "nox": {
+      "computeAddress": "0x24Ef36Ec5b626D7DCD09a98F3083c2758F0F77bF",
+      "bytecodeExists": true
+    }
+  },
+  "roleAddresses": {
+    "deployer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+    "actor1": "0xcDF1984Cf2e9DA885d1dae5C8e62449284eE06A9",
+    "actor2": "0x79DD8260773C7D5DEA701dfC2D3dD804FF041bf2",
+    "actor3": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+    "recipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798"
+  },
+  "recipientMode": "actor3",
+  "currentRecipientCFUSDBalance": "300",
+  "expectedBalance": "150",
+  "plans": [
+    {
+      "planId": "1",
+      "title": "Sepolia live Plan Together",
+      "organizer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+      "stage": "Complete",
+      "budgetRoomId": "2",
+      "splitRoomId": "3",
+      "collectionRoomId": "4",
+      "selectedCost": "150",
+      "intendedRecipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+      "creationTransactionHashes": [
+        "0x018a2525f5dc7d8dba14ef0d6306a4b207a2f58745090fbf5686d6c8a2875b91"
+      ],
+      "completionTransactionHashes": [
+        "0x1e20881adac3958c27537cf49276602ed1573c276d483e38e86ada8d784471bc"
+      ]
+    },
+    {
+      "planId": "2",
+      "title": "Sepolia live Plan Together",
+      "organizer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+      "stage": "Complete",
+      "budgetRoomId": "5",
+      "splitRoomId": "6",
+      "collectionRoomId": "7",
+      "selectedCost": "150",
+      "intendedRecipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+      "creationTransactionHashes": [
+        "0x2ec75e965236e039dd25217305cd8d5b28faaee9011de57f651459fda5eb6eed"
+      ],
+      "completionTransactionHashes": [
+        "0xc60ac129be56b254cfdd8ce92025096425f3eb0d626f04d98e3dc449d3e96939"
+      ]
+    }
+  ],
+  "livePlanTogetherPlans": [
+    {
+      "planId": "1",
+      "title": "Sepolia live Plan Together",
+      "organizer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+      "stage": "Complete",
+      "budgetRoomId": "2",
+      "splitRoomId": "3",
+      "collectionRoomId": "4",
+      "selectedCost": "150",
+      "intendedRecipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+      "creationTransactionHashes": [
+        "0x018a2525f5dc7d8dba14ef0d6306a4b207a2f58745090fbf5686d6c8a2875b91"
+      ],
+      "completionTransactionHashes": [
+        "0x1e20881adac3958c27537cf49276602ed1573c276d483e38e86ada8d784471bc"
+      ]
+    },
+    {
+      "planId": "2",
+      "title": "Sepolia live Plan Together",
+      "organizer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+      "stage": "Complete",
+      "budgetRoomId": "5",
+      "splitRoomId": "6",
+      "collectionRoomId": "7",
+      "selectedCost": "150",
+      "intendedRecipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+      "creationTransactionHashes": [
+        "0x2ec75e965236e039dd25217305cd8d5b28faaee9011de57f651459fda5eb6eed"
+      ],
+      "completionTransactionHashes": [
+        "0xc60ac129be56b254cfdd8ce92025096425f3eb0d626f04d98e3dc449d3e96939"
+      ]
+    }
+  ],
+  "recipientCollectionRooms": [
+    {
+      "roomId": "4",
+      "organizer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+      "recipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+      "publicTarget": "150",
+      "collectionStatus": "Withdrawn",
+      "verifiedContributionCount": "3",
+      "withdrawalRequestTransactionHashes": [
+        "0x437422443ba262585593d9826701f20f91d68b923497e9a28cd46c359001e0fc"
+      ],
+      "withdrawalFinalizationTransactionHashes": [
+        "0xb40b177d85a755e67c1d37fdf3637a97b93cb3f632354f00e83ddbd36f65586d"
+      ],
+      "linkedPlanId": "1"
+    },
+    {
+      "roomId": "7",
+      "organizer": "0x456Ccff0d33463E1834F724C5C5971D6cff6f1dc",
+      "recipient": "0x3BDCd4A4A6E4E11668b43004B52049b3167e6798",
+      "publicTarget": "150",
+      "collectionStatus": "Withdrawn",
+      "verifiedContributionCount": "3",
+      "withdrawalRequestTransactionHashes": [
+        "0xe3d7aaa60fde543fecd680bc0df0897a6cfb4dbf3080e81e5cc2f1c1c0110596"
+      ],
+      "withdrawalFinalizationTransactionHashes": [
+        "0xf04f1e76f701f1859d1080390483674b715284969b53e480a05bc76cd19e6ec9"
+      ],
+      "linkedPlanId": "2"
+    }
+  ],
+  "chronologicalBalanceLedger": [
+    {
+      "blockNumber": "11375492",
+      "transactionHash": "0x5c7576b6c2d09489b0e51117a6a227d339388d60b6b4d439e027caedd2240070",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": null,
+      "relatedRoomId": null,
+      "direction": "credit",
+      "decryptedAmount": "60",
+      "resultingBalance": "60",
+      "note": "wrap or mint credit to recipient"
+    },
+    {
+      "blockNumber": "11375538",
+      "transactionHash": "0x077b1c8a354f5d183ee9150100799aa9f7122eec78c7d8ed2aa09522d1db2458",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": null,
+      "relatedRoomId": null,
+      "direction": "debit",
+      "decryptedAmount": "60",
+      "resultingBalance": "0",
+      "note": "recipient contribution debit to FairCircle"
+    },
+    {
+      "blockNumber": "11375538",
+      "transactionHash": "0x077b1c8a354f5d183ee9150100799aa9f7122eec78c7d8ed2aa09522d1db2458",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": null,
+      "relatedRoomId": null,
+      "direction": "credit",
+      "decryptedAmount": "0",
+      "resultingBalance": "0",
+      "note": "credit from FairCircle to recipient"
+    },
+    {
+      "blockNumber": "11375552",
+      "transactionHash": "0x437422443ba262585593d9826701f20f91d68b923497e9a28cd46c359001e0fc",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": "1",
+      "relatedRoomId": "4",
+      "direction": "credit",
+      "decryptedAmount": "150",
+      "resultingBalance": "150",
+      "note": "collection withdrawal credit for room 4, linked plan 1"
+    },
+    {
+      "blockNumber": "11375707",
+      "transactionHash": "0xff36a53906ec537e037e335037941386a9df05a7077080695a13deffb9283778",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": null,
+      "relatedRoomId": null,
+      "direction": "credit",
+      "decryptedAmount": "60",
+      "resultingBalance": "210",
+      "note": "wrap or mint credit to recipient"
+    },
+    {
+      "blockNumber": "11375753",
+      "transactionHash": "0xa6f84b99a2355c6a65d567e429fb80e65a51f452a558105d72d82600c082c8ce",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": null,
+      "relatedRoomId": null,
+      "direction": "debit",
+      "decryptedAmount": "60",
+      "resultingBalance": "150",
+      "note": "recipient contribution debit to FairCircle"
+    },
+    {
+      "blockNumber": "11375753",
+      "transactionHash": "0xa6f84b99a2355c6a65d567e429fb80e65a51f452a558105d72d82600c082c8ce",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": null,
+      "relatedRoomId": null,
+      "direction": "credit",
+      "decryptedAmount": "0",
+      "resultingBalance": "150",
+      "note": "credit from FairCircle to recipient"
+    },
+    {
+      "blockNumber": "11375766",
+      "transactionHash": "0xe3d7aaa60fde543fecd680bc0df0897a6cfb4dbf3080e81e5cc2f1c1c0110596",
+      "event": "ConfidentialTransfer",
+      "relatedPlanId": "2",
+      "relatedRoomId": "7",
+      "direction": "credit",
+      "decryptedAmount": "150",
+      "resultingBalance": "300",
+      "note": "collection withdrawal credit for room 7, linked plan 2"
+    }
+  ],
+  "balanceLineage": {
+    "derivedBalance": "300",
+    "matchesCurrentBalance": true,
+    "unavailableAmountEvents": 0
+  },
+  "unwrapState": {
+    "pendingUnwrapRequests": [],
+    "finalizedUnwraps": []
+  },
+  "hypotheses": {
+    "twoCompletedCollectionsEachCredited150": true,
+    "sameCollectionWithdrawalCreditedTwice": false,
+    "recipientAlreadyHeld150BeforeLatestPlanTogetherRun": true,
+    "priorLiveE2ERunUsedSameRecipient": true,
+    "recipientRetainedWrappedCFUSDNotContributed": false,
+    "roleResolutionSelectedDifferentRecipientThanPlan": false,
+    "eventRecoveryOrBalanceDecryptionReadingWrongAddressOrHandle": false,
+    "unrelatedTransactionCreditedRecipient": false
+  },
+  "provenRootCause": "The recipient cFUSD balance is the legitimate accumulated result of two completed Plan Together collection withdrawal requests of 150 cFUSD each to the same recipient, with no finalized unwrap in between.",
+  "supportingTransactionHashes": [
+    "0x437422443ba262585593d9826701f20f91d68b923497e9a28cd46c359001e0fc",
+    "0xe3d7aaa60fde543fecd680bc0df0897a6cfb4dbf3080e81e5cc2f1c1c0110596",
+    "0x1e20881adac3958c27537cf49276602ed1573c276d483e38e86ada8d784471bc",
+    "0xc60ac129be56b254cfdd8ce92025096425f3eb0d626f04d98e3dc449d3e96939"
+  ],
+  "recommendedSafestRecoveryApproach": "Do not assume the latest run owns the whole 300 cFUSD balance. Review the listed completed plans, then resume with an idempotent recovery that unwraps only the latest plan amount of 150 if preserving the prior retained 150 is intended.",
+  "proposedRecoveryRequiresTransaction": true
+}
