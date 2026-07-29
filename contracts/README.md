@@ -22,6 +22,7 @@ From the repository root:
 pnpm install
 pnpm compile:contracts
 pnpm test:contracts
+pnpm check:size
 ```
 
 From this package:
@@ -29,6 +30,7 @@ From this package:
 ```bash
 pnpm compile
 pnpm test
+pnpm check:size
 pnpm deploy:piggy-bank
 ```
 
@@ -47,7 +49,7 @@ pnpm deploy:piggy-bank
 
 ### `FairCircle`
 
-`FairCircle` currently implements shared room foundations, QuietBudget, and FairSplit.
+`FairCircle` implements shared room foundations, QuietBudget, FairSplit, and Private Circle.
 
 QuietBudget lets a group compare fixed public option costs against privately submitted encrypted capacities. Individual capacities and aggregate capacity remain encrypted; final public affordability booleans are stored only after valid Nox public-decryption proofs.
 
@@ -72,6 +74,39 @@ The demo creates:
 
 Both demos prove unauthorized accounts cannot decrypt protected handles.
 
+Private Circle uses an ERC-7984 confidential token collection flow. Contributions arrive through `confidentialTransferAndCall`, accepted contributions update encrypted individual receipts, cumulative contribution totals, and the encrypted collection aggregate, and withdrawal transfers the encrypted aggregate to the configured recipient after proof validation.
+
+Run the local Private Circle demo:
+
+```bash
+pnpm demo:private-circle
+```
+
+The demo deploys `TestUSD`, `FairCircleUSD`, and `FairCircle`, wraps tFUSD into cFUSD, submits three confidential contributions, finalizes positivity and target proofs, withdraws to the recipient, and unwraps the exact cFUSD amount back to public tFUSD.
+
+### `FairCirclePlanTogether`
+
+`FairCirclePlanTogether` is a singleton coordinator for Plan Together. It links independently created core rooms and intentionally keeps Plan Together business logic out of `FairCircle.sol`.
+
+The monolith was frozen because Phase 3 measured `FairCircle.sol` at 22,612 bytes of deployed runtime bytecode, leaving 1,964 bytes of EIP-170 headroom. The coordinator architecture keeps each deployable contract under the per-contract EIP-170 limit.
+
+Coordinator guarantees:
+
+- child rooms cannot be reused across plans or stages;
+- organizer identity is preserved across budget, split, and collection rooms;
+- split and collection members must exactly match the copied budget member order;
+- selected public cost must equal split total cost and Private Circle public target;
+- collection must be invite-only, use the approved cFUSD token, and pay the intended recipient;
+- the coordinator never custodies tokens or encrypted balances.
+
+Run the local Plan Together demo:
+
+```bash
+pnpm demo:plan-together
+```
+
+The demo executes a complete real flow from PlanTogether QuietBudget through capacity-weighted FairSplit, invite-only Private Circle collection, withdrawal, coordinator completion, and recipient unwrap to public tFUSD.
+
 ## Privacy Scope
 
 QuietBudget public data:
@@ -91,6 +126,8 @@ Individual capacities are decryptable only by the submitting member. Aggregate c
 This is confidentiality, not wallet anonymity: addresses, participation, and timing remain public.
 
 FairSplit equal shares are inferable because total cost, member count, member order, and rounding policy are public. Capacity-weighted split keeps capacities, aggregate capacity, and assigned shares confidential except to authorized accounts.
+
+Plan Together reveals public coordination metadata: plan IDs, child room IDs, selected option index, selected public cost, recipient, lifecycle stage, and transaction timing. It does not expose encrypted handles or private values.
 
 `FairCircle.MAX_SUPPORTED_AMOUNT` is `1e36` token base units. Public total costs are validated against this limit. Encrypted capacity plaintext cannot be range-checked on-chain without additional private range-proof logic, so clients must enforce the same amount policy before encryption until that support exists.
 

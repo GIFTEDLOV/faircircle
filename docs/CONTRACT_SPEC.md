@@ -2,7 +2,7 @@
 
 ## Phase 1 Scope
 
-`FairCircle.sol` currently implements shared room foundations, QuietBudget, FairSplit, and Private Circle. Plan Together orchestration is not implemented yet.
+`FairCircle.sol` implements shared room foundations, QuietBudget, FairSplit, and Private Circle. Plan Together orchestration is implemented separately in `FairCirclePlanTogether.sol`.
 
 ## QuietBudget Rooms
 
@@ -176,3 +176,70 @@ The recipient and organizer receive ACL access to the encrypted withdrawal amoun
 ### Cancellation
 
 The organizer may cancel a Private Circle only while it is still open and before any contribution callback has been received. Once a callback arrives, cancellation is blocked so funds must move through close and withdrawal.
+
+## Plan Together Coordinator
+
+`FairCirclePlanTogether.sol` coordinates existing core rooms without changing core business logic.
+
+Constructor dependencies:
+
+- exact `FairCircle.sol` core contract address;
+- approved ERC-7984 confidential token address.
+
+Both constructor addresses must contain deployed code. The approved confidential token must report IERC7984 support through ERC-165.
+
+### Plan Creation
+
+`createPlanFromBudgetRoom` creates a sequential plan from a core room that already exists with `RoomMode.PlanTogether`.
+
+Rules:
+
+- caller must be the budget room organizer;
+- intended recipient must be non-zero;
+- the budget room must have 2 to 8 members;
+- the budget room must not already be linked;
+- the coordinator copies the room title, ordered members, public options, intended split method, and intended recipient.
+
+### Option Selection
+
+`selectAffordableOption` permanently selects one finalized affordable public option after the budget room is finalized. The selected public cost must be non-zero and becomes the invariant cost for downstream split and collection rooms.
+
+### FairSplit Linking
+
+`linkFairSplitRoom` requires:
+
+- stage `Split`;
+- child room mode `FairSplit`;
+- organizer equal to the plan organizer;
+- exact ordered member-list match;
+- split method equal to the plan method;
+- total cost equal to the selected cost;
+- child room not already linked.
+
+`confirmSplitReady` is permissionless. It requires shares to be ready. Capacity-weighted splits additionally require finalized public feasibility equal to true.
+
+### Private Circle Linking
+
+`linkPrivateCircleRoom` requires:
+
+- stage `Collection`;
+- child room mode `PrivateCircle`;
+- organizer equal to the plan organizer;
+- configured confidential token equal to the approved token;
+- recipient equal to the intended recipient;
+- public target equal to the selected cost;
+- invite-only access;
+- exact ordered invited-member match;
+- child room not already linked.
+
+Open collections are rejected for Plan Together because split participants and collection contributors must match.
+
+### Completion And Cancellation
+
+`completePlan` is permissionless and succeeds only after the linked Private Circle reports `CollectionStatus.Withdrawn`.
+
+`cancelPlan` is organizer-only and allowed only before a Private Circle room is linked. It changes only coordinator state and does not cancel or mutate child rooms.
+
+### Public Getters And Events
+
+Coordinator getters return public coordination state only. The coordinator interface to the core excludes encrypted handle getters. Coordinator events expose IDs, organizer, selected public cost, split method, recipient, and lifecycle stage only.

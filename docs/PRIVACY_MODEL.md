@@ -122,3 +122,41 @@ The public feasibility boolean leaks whether the aggregate private capacity can 
 6. If infeasible, shares are not created.
 
 FairSplit can later be reused inside Plan Together after a QuietBudget option has been selected.
+
+## Private Circle Privacy
+
+Private Circle protects contribution amounts and collection totals while exposing collection metadata.
+
+Encrypted state:
+
+- each contribution receipt;
+- each contributor's cumulative contribution;
+- collection aggregate;
+- target-reached comparison handle;
+- withdrawal amount and withdrawal success handle.
+
+Public state:
+
+- room title, organizer, recipient, confidential token, deadline, and public target;
+- invite-only member list when configured;
+- contribution IDs, contributor addresses, accepted booleans after positivity proof finalization, verified contribution count, and unique contributor count;
+- public target reached boolean after proof finalization;
+- collection status.
+
+The organizer can decrypt the aggregate while the collection is active and the withdrawal amount after settlement. Contributors can decrypt their own receipts and cumulative totals. Other contributors and outsiders cannot decrypt individual contribution handles.
+
+## Plan Together Privacy
+
+`FairCirclePlanTogether.sol` does not store encrypted capacities, shares, contributions, aggregate handles, withdrawal handles, or token balances. Its core interface intentionally omits encrypted handle getters.
+
+The coordinator exposes only public coordination metadata:
+
+- plan ID and child room IDs;
+- title copied from the budget room;
+- organizer and intended recipient;
+- ordered member list;
+- selected option index and selected public cost;
+- split method;
+- lifecycle stage.
+
+Remaining leakage is metadata leakage: observers can see who participates, which public option was selected, the public collection target, and when each stage advances. Plan Together does not infer or expose private aggregate capacity, individual capacities, individual shares, individual contribution amounts, or withdrawal plaintext.

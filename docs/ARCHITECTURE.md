@@ -42,6 +42,11 @@ contracts/
   contracts/
     ConfidentialPiggyBank.sol
     FairCircle.sol
+    FairCirclePlanTogether.sol
+    FairCircleUSD.sol
+    TestUSD.sol
+    interfaces/
+      IFairCircleCore.sol
   test/
   scripts/
 ```
@@ -70,7 +75,7 @@ When blockchain work begins, keep integration concerns separate from presentatio
 
 `ConfidentialPiggyBank.sol` is retained as a local Nox smoke contract. It proves encrypted deposit, withdrawal, balance, decryption, and ACL behavior.
 
-`FairCircle.sol` is the product contract. It implements shared room foundations, QuietBudget, and FairSplit:
+`FairCircle.sol` is the core product contract. It implements shared room foundations, QuietBudget, FairSplit, and Private Circle:
 
 - rooms use sequential IDs;
 - members and options are fixed at creation;
@@ -80,10 +85,29 @@ When blockchain work begins, keep integration concerns separate from presentatio
 - public affordability is finalized only through Nox public-decryption proofs.
 - equal-split shares are calculated immediately from public total/member count and stored as encrypted handles;
 - capacity-weighted split feasibility is publicly proven before encrypted proportional shares are calculated.
+- confidential Private Circle contributions are received through ERC-7984 callbacks;
+- Private Circle withdrawal is handled by the core contract after proof-validated encrypted settlement.
 
 The contract uses bounded loops only over the product limits of 8 members and 4 options.
 
 FairSplit shares reuse the room member list and per-member encrypted handle mappings. Equal split is finalized immediately. Capacity-weighted split moves from `CollectingInputs` to `ReadyForDecryption` after all capacities are submitted, then to `Finalized` after public feasibility proof validation.
+
+Private Circle stores encrypted contribution receipts, cumulative contribution handles, aggregate collection handles, public target handles, and withdrawal handles. FairCircle events expose contribution and collection metadata but do not emit plaintext contribution, aggregate, or withdrawal amounts.
+
+`FairCirclePlanTogether.sol` is a separate coordinator. It was added because the Phase 3 `FairCircle.sol` runtime measured 22,612 bytes, leaving 1,964 bytes of EIP-170 headroom. The core is therefore frozen for existing business logic and Plan Together links child rooms instead of extending the monolith.
+
+The coordinator:
+
+- reads public state from the exact configured core contract;
+- copies the budget room title and ordered member list;
+- requires child-room organizer identity to match the plan organizer;
+- prevents room reuse across plans and stages;
+- requires exact ordered member matching for split and collection rooms;
+- requires selected cost, split total, and collection target to match;
+- requires invite-only collection access with the approved confidential token;
+- does not custody tokens or store encrypted values.
+
+The future frontend should hide the multi-transaction sequence behind one Plan Together workflow while preserving these contract boundaries.
 
 ## Data Model Direction
 

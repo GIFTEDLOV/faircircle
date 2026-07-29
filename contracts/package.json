@@ -11,6 +11,7 @@
     "demo:quiet-budget": "hardhat test scripts/demo-quiet-budget.ts",
     "demo:fair-split": "hardhat test scripts/demo-fair-split.ts",
     "demo:private-circle": "hardhat test scripts/demo-private-circle.ts",
+    "demo:plan-together": "hardhat test scripts/demo-plan-together.ts",
     "deploy:piggy-bank": "hardhat run scripts/deploy-piggy-bank.ts"
   },
   "devDependencies": {
