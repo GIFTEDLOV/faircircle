@@ -29,11 +29,7 @@ export function QuietBudgetList() {
           actions={<ButtonLink href="/quiet-budget/create">Create private budget</ButtonLink>}
         />
 
-        <PrivacyLabel>
-          A wallet connection is required to find rooms involving your wallet. Member addresses,
-          option costs, deadlines, and group-level results are public; submitted capacity amounts
-          stay confidential unless the connected member explicitly reveals their own value.
-        </PrivacyLabel>
+        <PrivacyLabel>{quietBudgetPrivacyCopy(wallet.isConnected)}</PrivacyLabel>
 
         {!wallet.isConnected ? (
           <Card className="space-y-4">
@@ -54,6 +50,12 @@ export function QuietBudgetList() {
       </div>
     </AppShell>
   );
+}
+
+export function quietBudgetPrivacyCopy(isConnected: boolean) {
+  return isConnected
+    ? "Only QuietBudget rooms involving this connected wallet are shown. Member addresses, option costs, deadlines, and group-level results are public; private capacity amounts remain confidential unless this wallet explicitly reveals its own value."
+    : "A wallet connection is required to find rooms involving your wallet. Member addresses, option costs, deadlines, and group-level results are public; submitted capacity amounts stay confidential unless the connected member explicitly reveals their own value.";
 }
 
 function ConnectedRoomDashboard({ account }: { account?: `0x${string}` }) {

@@ -2,19 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAddress, type Address } from "viem";
-import { createFairCirclePublicClient } from "@/lib/web3/clients";
 import {
-  fairCircleAbi,
-  fairCircleAddress,
-  fairCircleDeploymentBlock,
-  normalizeRoomView,
-  safeWeb3ErrorMessage,
   type QuietBudgetRoomView,
 } from "./contract";
-import { RoomMode } from "./room-status";
-
-const LOG_CHUNK_SIZE = 50_000n;
-const MAX_LOG_RETRIES = 3;
+import type { SerializedQuietBudgetRoom } from "./room-history";
 
 export type QuietBudgetRoomSummary = {
   room: QuietBudgetRoomView;
@@ -37,10 +28,12 @@ export function useQuietBudgetRooms({
 }) {
   const [state, setState] = useState<RoomsState>({ status: "idle", rooms: [] });
   const requestRef = useRef(0);
+  const abortRef = useRef<AbortController | undefined>(undefined);
 
   const refresh = useCallback(async () => {
     if (!enabled || account === undefined) {
       requestRef.current += 1;
+      abortRef.current?.abort();
       setState({ status: "idle", rooms: [] });
       return;
     }
@@ -48,84 +41,49 @@ export function useQuietBudgetRooms({
     const requestId = requestRef.current + 1;
     requestRef.current = requestId;
     const normalizedAccount = getAddress(account);
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setState((current) => ({ status: "loading", rooms: current.rooms }));
 
     try {
-      const publicClient = createFairCirclePublicClient();
-      const snapshotBlock = await publicClient.getBlockNumber();
-      if (requestRef.current !== requestId) {
+      const response = await fetch(`/api/quiet-budget/rooms?account=${normalizedAccount}`, {
+        method: "GET",
+        signal: controller.signal,
+        headers: { accept: "application/json" },
+      });
+      const payload = await response.json() as RoomHistoryApiResponse;
+      if (!shouldAcceptRoomHistoryResponse({
+        requestId,
+        currentRequestId: requestRef.current,
+        signal: controller.signal,
+      })) {
         return;
       }
-      const roomIds = await scanQuietBudgetRoomIds(snapshotBlock, () => requestRef.current !== requestId);
-      const rooms: QuietBudgetRoomSummary[] = [];
-      const readFailures: string[] = [];
-
-      for (const roomId of roomIds) {
-        if (requestRef.current !== requestId) {
-          return;
-        }
-        try {
-          const [roomValue, membersValue, hasSubmittedValue] = await Promise.all([
-            publicClient.readContract({
-              address: fairCircleAddress,
-              abi: fairCircleAbi,
-              functionName: "getRoom",
-              args: [roomId],
-            }),
-            publicClient.readContract({
-              address: fairCircleAddress,
-              abi: fairCircleAbi,
-              functionName: "getMembers",
-              args: [roomId],
-            }),
-            publicClient.readContract({
-              address: fairCircleAddress,
-              abi: fairCircleAbi,
-              functionName: "hasSubmitted",
-              args: [roomId, normalizedAccount],
-            }),
-          ]);
-          const room = normalizeRoomView(roomValue);
-          if (room.mode !== RoomMode.QuietBudget) {
-            continue;
-          }
-          const members = (membersValue as Address[]).map((member) => getAddress(member));
-          const isOrganizer = getAddress(room.organizer) === normalizedAccount;
-          const isMember = members.some((member) => getAddress(member) === normalizedAccount);
-          if (!isOrganizer && !isMember) {
-            continue;
-          }
-          rooms.push({
-            room,
-            members,
-            hasSubmitted: Boolean(hasSubmittedValue),
-            role: isOrganizer && isMember
-              ? "Organizer and member"
-              : isOrganizer
-                ? "Organizer"
-                : "Member",
-          });
-        } catch (error) {
-          readFailures.push(safeWeb3ErrorMessage(error));
-        }
-      }
-
-      if (requestRef.current !== requestId) {
-        return;
+      if (!payload.ok) {
+        throw new Error(payload.error.message);
       }
       setState({
         status: "success",
-        rooms: rooms.sort((a, b) => Number(b.room.id - a.room.id)),
-        snapshotBlock,
-        partialError: readFailures.length > 0
-          ? "Some rooms could not be refreshed from the RPC provider."
-          : undefined,
+        rooms: payload.rooms.map(normalizeRoomHistoryRoom),
+        snapshotBlock: BigInt(payload.snapshotBlock),
+        partialError: payload.partialError,
       });
     } catch (error) {
-      if (requestRef.current !== requestId) {
+      if (!shouldAcceptRoomHistoryResponse({
+        requestId,
+        currentRequestId: requestRef.current,
+        signal: controller.signal,
+      })) {
         return;
       }
-      setState({ status: "error", rooms: [], error: safeWeb3ErrorMessage(error) });
+      setState({
+        status: "error",
+        rooms: [],
+        error: error instanceof Error && error.message.trim() !== ""
+          ? error.message
+          : "Room history could not be loaded. Try again.",
+      });
     }
   }, [account, enabled]);
 
@@ -134,66 +92,51 @@ export function useQuietBudgetRooms({
     return () => {
       window.clearTimeout(timer);
       requestRef.current += 1;
+      abortRef.current?.abort();
     };
   }, [refresh]);
 
   return { ...state, refresh };
 }
 
-async function scanQuietBudgetRoomIds(snapshotBlock: bigint, isCancelled: () => boolean) {
-  const publicClient = createFairCirclePublicClient();
-  const ids = new Set<bigint>();
-  let fromBlock = fairCircleDeploymentBlock;
+export type RoomHistoryApiResponse =
+  | ({
+      ok: true;
+      account: Address;
+      snapshotBlock: string;
+      rooms: SerializedQuietBudgetRoom[];
+      partialError?: string;
+    })
+  | {
+      ok: false;
+      error: {
+        code: string;
+        message: string;
+      };
+    };
 
-  while (fromBlock <= snapshotBlock) {
-    if (isCancelled()) {
-      return [];
-    }
-    const toBlock = fromBlock + LOG_CHUNK_SIZE - 1n > snapshotBlock
-      ? snapshotBlock
-      : fromBlock + LOG_CHUNK_SIZE - 1n;
-    const events = await withRateLimitRetry(() =>
-      publicClient.getContractEvents({
-        address: fairCircleAddress,
-        abi: fairCircleAbi,
-        eventName: "RoomCreated",
-        fromBlock,
-        toBlock,
-      }),
-    );
-    for (const event of events) {
-      const args = event.args as Record<string, unknown>;
-      if (Number(args.mode) === RoomMode.QuietBudget) {
-        ids.add(BigInt(args.roomId as bigint));
-      }
-    }
-    fromBlock = toBlock + 1n;
-  }
-
-  return Array.from(ids);
+export function normalizeRoomHistoryRoom(room: SerializedQuietBudgetRoom): QuietBudgetRoomSummary {
+  return {
+    room: {
+      ...room.room,
+      id: BigInt(room.room.id),
+      organizer: getAddress(room.room.organizer),
+      submissionDeadline: BigInt(room.room.submissionDeadline),
+    },
+    members: room.members.map((member) => getAddress(member)),
+    hasSubmitted: room.hasSubmitted,
+    role: room.role,
+  };
 }
 
-async function withRateLimitRetry<T>(operation: () => Promise<T>) {
-  let lastError: unknown;
-  for (let attempt = 0; attempt < MAX_LOG_RETRIES; attempt += 1) {
-    try {
-      return await operation();
-    } catch (error) {
-      lastError = error;
-      if (!isRateLimitError(error) || attempt === MAX_LOG_RETRIES - 1) {
-        break;
-      }
-      await delay(600 * (attempt + 1));
-    }
-  }
-  throw lastError;
-}
-
-function isRateLimitError(error: unknown) {
-  const message = error instanceof Error ? error.message : String(error);
-  return /429|rate limit|too many requests/i.test(message);
-}
-
-function delay(ms: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, ms));
+export function shouldAcceptRoomHistoryResponse({
+  requestId,
+  currentRequestId,
+  signal,
+}: {
+  requestId: number;
+  currentRequestId: number;
+  signal: Pick<AbortSignal, "aborted">;
+}) {
+  return requestId === currentRequestId && !signal.aborted;
 }
