@@ -5,6 +5,7 @@
   "packageManager": "pnpm@11.0.9",
   "scripts": {
     "dev:frontend": "pnpm --dir frontend dev",
+    "sync:contracts": "pnpm --dir frontend sync:contracts",
     "lint:frontend": "pnpm --dir frontend lint",
     "build:frontend": "pnpm --dir frontend build",
     "compile:contracts": "pnpm --dir contracts compile",

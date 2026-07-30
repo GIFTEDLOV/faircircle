@@ -38,11 +38,12 @@ export function ModePage({ mode }: ModePageProps) {
                 <h2 className="text-lg font-semibold text-slate-950">
                   Mode status
                 </h2>
-                <StatusBadge tone="info">Foundation</StatusBadge>
+                <StatusBadge tone="success">Live on Sepolia</StatusBadge>
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-600">
-                This workspace is ready for product flow design. Live private
-                submissions and transactions are not connected in this phase.
+                The deployed contracts are reachable on Sepolia. Interactive
+                wallet transactions for this workflow are being added
+                progressively.
               </p>
             </Card>
             <PrivacyLabel>{mode.privacy}</PrivacyLabel>

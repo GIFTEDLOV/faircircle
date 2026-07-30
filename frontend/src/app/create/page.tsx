@@ -13,7 +13,7 @@ export default function CreatePage() {
         <PageHeader
           eyebrow="Create"
           title="Choose how your group wants to plan"
-          description="Start with the workflow that matches the decision your group needs to make. Creation forms and live submissions will be added after the foundation phase."
+          description="Start with the workflow that matches the decision your group needs to make. Wallet connection is live; private creation transactions are being enabled one workflow at a time."
         />
 
         <div className="grid gap-5 md:grid-cols-2">
@@ -28,7 +28,7 @@ export default function CreatePage() {
                     {mode.createName}
                   </h2>
                 </div>
-                <StatusBadge tone="info">Available</StatusBadge>
+                <StatusBadge tone="info">Preparing</StatusBadge>
               </div>
               <p className="mt-4 flex-1 text-sm leading-6 text-slate-600">
                 {mode.purpose}
@@ -41,8 +41,8 @@ export default function CreatePage() {
         </div>
 
         <PrivacyLabel>
-          This screen chooses a planning path only. It does not create wallet
-          requests, transactions, or private submissions yet.
+          This screen chooses a planning path only. It does not broadcast
+          transactions or create private submissions yet.
         </PrivacyLabel>
       </div>
     </AppShell>

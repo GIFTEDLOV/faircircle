@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ButtonLink } from "@/components/ui/button-link";
+import { WalletControl } from "@/components/web3/wallet-control";
 import { primaryNavItems } from "@/lib/content";
 
 export function SiteNav() {
@@ -31,7 +32,8 @@ export function SiteNav() {
           ))}
         </div>
 
-        <div className="hidden md:block">
+        <div className="hidden items-center gap-3 md:flex">
+          <WalletControl />
           <ButtonLink href="/create" variant="primary">
             New plan
           </ButtonLink>
@@ -51,6 +53,9 @@ export function SiteNav() {
                 {item.label}
               </Link>
             ))}
+            <div className="mt-2 border-t border-slate-200 pt-2">
+              <WalletControl />
+            </div>
           </div>
         </details>
       </nav>

@@ -4,14 +4,17 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "sync:contracts": "node scripts/sync-contracts.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@iexec-nox/handle": "0.1.0-beta.13",
     "next": "16.2.12",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "viem": "2.55.10"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

@@ -23,7 +23,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,23,42,0.92)_0%,rgba(15,23,42,0.7)_42%,rgba(15,23,42,0.12)_100%)]" />
           <div className="relative mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
             <div className="max-w-2xl">
-              <StatusBadge tone="success">Foundation phase</StatusBadge>
+              <StatusBadge tone="success">Live on Sepolia</StatusBadge>
               <h1 className="mt-6 text-5xl font-semibold tracking-tight text-white sm:text-6xl">
                 FairCircle
               </h1>
@@ -53,8 +53,9 @@ export default function Home() {
               </h2>
               <p className="mt-4 text-base leading-7 text-slate-600">
                 FairCircle keeps sensitive inputs private while giving the
-                group clear next steps. This phase provides the production UI
-                foundation before blockchain integrations begin.
+                group clear next steps. The contracts are live on Ethereum
+                Sepolia, and private creation workflows are being activated
+                progressively.
               </p>
             </div>
 
@@ -100,8 +101,9 @@ export default function Home() {
               </p>
             </div>
             <PrivacyLabel>
-              FairCircle is not connected to wallets, private computation, or
-              live transactions in this foundation phase.
+              Wallet connection and public deployment checks are available on
+              Sepolia. Public health reads do not reveal private values, and no
+              fabricated user data is displayed.
             </PrivacyLabel>
           </div>
         </section>

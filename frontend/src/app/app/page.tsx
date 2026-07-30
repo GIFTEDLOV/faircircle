@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PrivacyLabel } from "@/components/ui/privacy-label";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { DeploymentHealth } from "@/components/web3/deployment-health";
 import { modes } from "@/lib/content";
 
 export default function WorkspacePage() {
@@ -14,9 +15,11 @@ export default function WorkspacePage() {
         <PageHeader
           eyebrow="Workspace"
           title="Your private planning hub"
-          description="Create private budgets, fair splits, confidential collections, or one guided group plan. Live group data will appear here after persistence and integrations are added."
+          description="Connect a wallet, inspect the live Sepolia deployment, and choose the private workflow your group needs. Interactive submissions are being activated progressively."
           actions={<ButtonLink href="/create">Create new</ButtonLink>}
         />
+
+        <DeploymentHealth />
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {modes.map((mode) => (
@@ -25,7 +28,7 @@ export default function WorkspacePage() {
                 <h2 className="text-lg font-semibold text-slate-950">
                   {mode.name}
                 </h2>
-                <StatusBadge>Ready</StatusBadge>
+                <StatusBadge tone="success">Sepolia</StatusBadge>
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-600">
                 {mode.summary}
@@ -39,14 +42,15 @@ export default function WorkspacePage() {
 
         <EmptyState
           title="No active circles yet"
-          description="Your created budgets, splits, collections, and guided plans will appear here once real data storage is implemented."
+          description="No wallet-specific rooms or plans are shown until live workflow reads are added. FairCircle does not fabricate balances, members, or transaction history."
           actionLabel="Create your first plan"
           actionHref="/create"
         />
 
         <PrivacyLabel>
-          This workspace does not show fabricated balances, transaction history,
-          or members. Empty states are intentional until real data exists.
+          Public deployment checks use live contract reads only. Private values
+          remain outside the UI unless an authorized wallet later decrypts its
+          own data.
         </PrivacyLabel>
       </div>
     </AppShell>
