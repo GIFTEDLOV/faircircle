@@ -6,6 +6,7 @@
   "scripts": {
     "dev:frontend": "pnpm --dir frontend dev",
     "sync:contracts": "pnpm --dir frontend sync:contracts",
+    "test:frontend": "pnpm --dir frontend test",
     "lint:frontend": "pnpm --dir frontend lint",
     "build:frontend": "pnpm --dir frontend build",
     "compile:contracts": "pnpm --dir contracts compile",
@@ -22,6 +23,6 @@
     "live-e2e:sepolia": "pnpm --dir contracts live-e2e:sepolia",
     "resume-live-e2e:sepolia": "pnpm --dir contracts resume-live-e2e:sepolia",
     "diagnose:nox-compute": "pnpm --dir contracts diagnose:nox-compute",
-    "verify": "pnpm lint:frontend && pnpm build:frontend && pnpm compile:contracts && pnpm test:contracts && pnpm check:size"
+    "verify": "pnpm test:frontend && pnpm lint:frontend && pnpm build:frontend && pnpm compile:contracts && pnpm test:contracts && pnpm check:size"
   }
 }

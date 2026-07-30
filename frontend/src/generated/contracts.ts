@@ -259,6 +259,150 @@ export const fairCircleDeployment = {
       "runtimeBytecodeHash": "0x963bd5942c98629e49f4941c94cf2579bd1adfa95eeed5cb81929187cae9083c",
       "abi": [
         {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint8",
+              "name": "optionIndex",
+              "type": "uint8"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "affordable",
+              "type": "bool"
+            }
+          ],
+          "name": "AffordabilityFinalized",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint8",
+              "name": "optionIndex",
+              "type": "uint8"
+            }
+          ],
+          "name": "AffordabilityReady",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "member",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint8",
+              "name": "submissionCount",
+              "type": "uint8"
+            }
+          ],
+          "name": "CapacitySubmitted",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "RoomCancelled",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "organizer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCircle.RoomMode",
+              "name": "mode",
+              "type": "uint8"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint64",
+              "name": "submissionDeadline",
+              "type": "uint64"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint8",
+              "name": "memberCount",
+              "type": "uint8"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint8",
+              "name": "optionCount",
+              "type": "uint8"
+            }
+          ],
+          "name": "RoomCreated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "RoomFinalized",
+          "type": "event"
+        },
+        {
           "inputs": [],
           "name": "MAX_MEMBERS",
           "outputs": [
@@ -286,12 +430,342 @@ export const fairCircleDeployment = {
         },
         {
           "inputs": [],
+          "name": "MAX_SUPPORTED_AMOUNT",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
           "name": "MIN_MEMBERS",
           "outputs": [
             {
               "internalType": "uint8",
               "name": "",
               "type": "uint8"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
+          "name": "MIN_OPTIONS",
+          "outputs": [
+            {
+              "internalType": "uint8",
+              "name": "",
+              "type": "uint8"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "cancelRoom",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "address[]",
+              "name": "members",
+              "type": "address[]"
+            },
+            {
+              "internalType": "uint256[]",
+              "name": "optionCosts",
+              "type": "uint256[]"
+            },
+            {
+              "internalType": "uint64",
+              "name": "submissionDeadline",
+              "type": "uint64"
+            },
+            {
+              "internalType": "enum FairCircle.RoomMode",
+              "name": "mode",
+              "type": "uint8"
+            }
+          ],
+          "name": "createQuietBudgetRoom",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "optionIndex",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "publicDecryptionProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "finalizeAffordability",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "optionIndex",
+              "type": "uint256"
+            }
+          ],
+          "name": "getAffordabilityHandle",
+          "outputs": [
+            {
+              "internalType": "ebool",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getMembers",
+          "outputs": [
+            {
+              "internalType": "address[]",
+              "name": "",
+              "type": "address[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getMyCapacityHandle",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getOptions",
+          "outputs": [
+            {
+              "internalType": "uint256[]",
+              "name": "",
+              "type": "uint256[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "optionIndex",
+              "type": "uint256"
+            }
+          ],
+          "name": "getPublicAffordability",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "finalized",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "affordable",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getRoom",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "string",
+                  "name": "title",
+                  "type": "string"
+                },
+                {
+                  "internalType": "address",
+                  "name": "organizer",
+                  "type": "address"
+                },
+                {
+                  "internalType": "enum FairCircle.RoomMode",
+                  "name": "mode",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "enum FairCircle.RoomStatus",
+                  "name": "status",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "submissionDeadline",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "memberCount",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "submissionCount",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "optionCount",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint8",
+                  "name": "finalizedOptionCount",
+                  "type": "uint8"
+                }
+              ],
+              "internalType": "struct FairCircle.RoomView",
+              "name": "",
+              "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "hasSubmitted",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "isMember",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
             }
           ],
           "stateMutability": "view",
@@ -308,6 +782,29 @@ export const fairCircleDeployment = {
             }
           ],
           "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "externalEuint256",
+              "name": "externalHandle",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "inputProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "submitPrivateCapacity",
+          "outputs": [],
+          "stateMutability": "nonpayable",
           "type": "function"
         }
       ]

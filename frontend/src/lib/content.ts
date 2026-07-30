@@ -35,7 +35,7 @@ export const modes: Mode[] = [
     actionLabel: "Create private budget",
     emptyTitle: "No private budgets yet",
     emptyDescription:
-      "Start with a plan or price range, then invite members when private submissions are available.",
+      "Create a QuietBudget room to collect private capacity submissions and publish group-level affordability results.",
     accent: "teal",
   },
   {
