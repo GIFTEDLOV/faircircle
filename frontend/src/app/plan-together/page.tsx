@@ -1,6 +1,5 @@
-import { ModePage } from "@/components/mode-page";
-import { getMode } from "@/lib/content";
+import { PlanTogetherList } from "@/features/plan-together/plan-together-list";
 
 export default function PlanTogetherPage() {
-  return <ModePage mode={getMode("plan-together")} />;
+  return <PlanTogetherList />;
 }

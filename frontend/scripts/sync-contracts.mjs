@@ -92,8 +92,8 @@ const requiredAbiEntries = {
     ],
   },
   FairCirclePlanTogether: {
-    functions: ["nextPlanId", "fairCircleCore", "approvedConfidentialToken"],
-    events: [],
+    functions: ["nextPlanId", "fairCircleCore", "approvedConfidentialToken", "createPlanFromBudgetRoom", "selectAffordableOption", "linkFairSplitRoom", "confirmSplitReady", "linkPrivateCircleRoom", "completePlan", "cancelPlan", "getPlan", "getPlanMembers", "getPlanOptions", "getLinkedPlanForRoom", "isPlanMember", "canSelectOption", "canConfirmSplit", "canCompletePlan"],
+    events: ["PlanCreated", "AffordableOptionSelected", "FairSplitRoomLinked", "FairSplitConfirmed", "PrivateCircleRoomLinked", "PlanCompleted", "PlanCancelled"],
   },
 };
 

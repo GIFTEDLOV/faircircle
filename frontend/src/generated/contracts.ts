@@ -2030,6 +2030,235 @@ export const fairCircleDeployment = {
       "runtimeBytecodeHash": "0x5c0c1839f30865544d8589fda9355252d840b085bd04fd8c4e82d711be0f97b4",
       "abi": [
         {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "budgetRoomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "optionIndex",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "selectedCost",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCirclePlanTogether.Stage",
+              "name": "stage",
+              "type": "uint8"
+            }
+          ],
+          "name": "AffordableOptionSelected",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "splitRoomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCirclePlanTogether.Stage",
+              "name": "stage",
+              "type": "uint8"
+            }
+          ],
+          "name": "FairSplitConfirmed",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "splitRoomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum IFairCircleCore.SplitMethod",
+              "name": "splitMethod",
+              "type": "uint8"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "selectedCost",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCirclePlanTogether.Stage",
+              "name": "stage",
+              "type": "uint8"
+            }
+          ],
+          "name": "FairSplitRoomLinked",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCirclePlanTogether.Stage",
+              "name": "stage",
+              "type": "uint8"
+            }
+          ],
+          "name": "PlanCancelled",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "collectionRoomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCirclePlanTogether.Stage",
+              "name": "stage",
+              "type": "uint8"
+            }
+          ],
+          "name": "PlanCompleted",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "budgetRoomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "organizer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum IFairCircleCore.SplitMethod",
+              "name": "splitMethod",
+              "type": "uint8"
+            },
+            {
+              "indexed": false,
+              "internalType": "address",
+              "name": "intendedRecipient",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCirclePlanTogether.Stage",
+              "name": "stage",
+              "type": "uint8"
+            }
+          ],
+          "name": "PlanCreated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "collectionRoomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "selectedCost",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCirclePlanTogether.Stage",
+              "name": "stage",
+              "type": "uint8"
+            }
+          ],
+          "name": "PrivateCircleRoomLinked",
+          "type": "event"
+        },
+        {
           "inputs": [],
           "name": "approvedConfidentialToken",
           "outputs": [
@@ -2040,6 +2269,136 @@ export const fairCircleDeployment = {
             }
           ],
           "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "canCompletePlan",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "canConfirmSplit",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "optionIndex",
+              "type": "uint256"
+            }
+          ],
+          "name": "canSelectOption",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "cancelPlan",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "completePlan",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "confirmSplitReady",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "budgetRoomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "enum IFairCircleCore.SplitMethod",
+              "name": "intendedSplitMethod",
+              "type": "uint8"
+            },
+            {
+              "internalType": "address",
+              "name": "intendedRecipient",
+              "type": "address"
+            }
+          ],
+          "name": "createPlanFromBudgetRoom",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
           "type": "function"
         },
         {
@@ -2056,6 +2415,209 @@ export const fairCircleDeployment = {
           "type": "function"
         },
         {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getLinkedPlanForRoom",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getPlan",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "string",
+                  "name": "title",
+                  "type": "string"
+                },
+                {
+                  "internalType": "address",
+                  "name": "organizer",
+                  "type": "address"
+                },
+                {
+                  "internalType": "enum FairCirclePlanTogether.Stage",
+                  "name": "stage",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "budgetRoomId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "selectedOptionIndex",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "selectedCost",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "enum IFairCircleCore.SplitMethod",
+                  "name": "splitMethod",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "splitRoomId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "collectionRoomId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "intendedRecipient",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "createdAt",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "updatedAt",
+                  "type": "uint64"
+                }
+              ],
+              "internalType": "struct FairCirclePlanTogether.PlanView",
+              "name": "",
+              "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getPlanMembers",
+          "outputs": [
+            {
+              "internalType": "address[]",
+              "name": "",
+              "type": "address[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getPlanOptions",
+          "outputs": [
+            {
+              "internalType": "uint256[]",
+              "name": "",
+              "type": "uint256[]"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "address",
+              "name": "account",
+              "type": "address"
+            }
+          ],
+          "name": "isPlanMember",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "splitRoomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "linkFairSplitRoom",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "collectionRoomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "linkPrivateCircleRoom",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
           "inputs": [],
           "name": "nextPlanId",
           "outputs": [
@@ -2066,6 +2628,24 @@ export const fairCircleDeployment = {
             }
           ],
           "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "planId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint256",
+              "name": "optionIndex",
+              "type": "uint256"
+            }
+          ],
+          "name": "selectAffordableOption",
+          "outputs": [],
+          "stateMutability": "nonpayable",
           "type": "function"
         }
       ]
