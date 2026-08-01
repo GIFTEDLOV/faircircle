@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { type Address, type Hex } from "viem";
@@ -13,6 +13,7 @@ import { Card } from "@/components/ui/card";
 import { PrivacyLabel } from "@/components/ui/privacy-label";
 import { InlineError } from "@/components/web3/inline-error";
 import { createFairCirclePublicClient, createFairCircleWalletClient } from "@/lib/web3/clients";
+import { withTransientRpcRetry } from "@/lib/web3/retry";
 import { useWallet } from "@/lib/web3/use-wallet";
 import {
   MAX_SUPPORTED_AMOUNT_FALLBACK,
@@ -41,15 +42,26 @@ export function QuietBudgetCreateForm() {
   const [txState, setTxState] = useState<TransactionState>("idle");
   const [txHash, setTxHash] = useState<Hex>();
   const [txError, setTxError] = useState<string>();
+  const operationRef = useRef(0);
+
+  useEffect(() => {
+    operationRef.current += 1;
+    const timer = window.setTimeout(() => {
+      setTxState("idle");
+      setTxHash(undefined);
+      setTxError(undefined);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [wallet.address, wallet.chainId]);
 
   useEffect(() => {
     let cancelled = false;
     const publicClient = createFairCirclePublicClient();
-    publicClient.readContract({
+    withTransientRpcRetry(() => publicClient.readContract({
       address: fairCircleAddress,
       abi: fairCircleAbi,
       functionName: "MAX_SUPPORTED_AMOUNT",
-    }).then((value) => {
+    })).then((value) => {
       if (!cancelled) {
         setMaxSupportedAmount(BigInt(value as bigint));
       }
@@ -81,6 +93,7 @@ export function QuietBudgetCreateForm() {
   const txActive = ["preparing", "awaiting-wallet", "submitted", "confirming"].includes(txState);
 
   async function submit() {
+    const operation = operationRef.current;
     setTxError(undefined);
     setTxHash(undefined);
     const titleErrors = validateTitle(title);
@@ -109,26 +122,32 @@ export function QuietBudgetCreateForm() {
         deadlineResult.value,
         RoomMode.QuietBudget,
       ] as const;
-      const simulation = await publicClient.simulateContract({
-        address: fairCircleAddress,
-        abi: fairCircleAbi,
-        functionName: "createQuietBudgetRoom",
-        args,
-        account: wallet.address,
-      });
+      const simulation = await withTransientRpcRetry(() => publicClient.simulateContract({
+          address: fairCircleAddress,
+          abi: fairCircleAbi,
+          functionName: "createQuietBudgetRoom",
+          args,
+          account: wallet.address,
+        }));
+      if (operation !== operationRef.current) {
+        return;
+      }
       setTxState("awaiting-wallet");
       const hash = await walletClient.writeContract(simulation.request);
       setTxHash(hash);
       setTxState("submitted");
       setTxState("confirming");
-      const receipt = await publicClient.waitForTransactionReceipt({
-        hash,
-        confirmations: 1,
-        onReplaced: (replacement) => {
-          setTxHash(replacement.transaction.hash);
-          setTxState("confirming");
-        },
-      });
+      const receipt = await withTransientRpcRetry(() => publicClient.waitForTransactionReceipt({
+          hash,
+          confirmations: 1,
+          onReplaced: (replacement) => {
+            setTxHash(replacement.transaction.hash);
+            setTxState("confirming");
+          },
+        }));
+      if (operation !== operationRef.current) {
+        return;
+      }
       if (receipt.status !== "success") {
         throw new Error("The confirmed transaction was reverted.");
       }
@@ -136,6 +155,9 @@ export function QuietBudgetCreateForm() {
       setTxState("confirmed");
       router.push(`/quiet-budget/${created.roomId.toString()}`);
     } catch (error) {
+      if (operation !== operationRef.current) {
+        return;
+      }
       setTxState("failed");
       setTxError(safeWeb3ErrorMessage(error));
     }

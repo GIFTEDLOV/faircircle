@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getAddress, type Address } from "viem";
 import { createFairCirclePublicClient } from "@/lib/web3/clients";
+import { withTransientRpcRetry } from "@/lib/web3/retry";
 import {
   fairCircleAbi,
   fairCircleAddress,
@@ -57,24 +58,24 @@ export function useQuietBudgetRoom({
     try {
       const publicClient = createFairCirclePublicClient();
       const [roomValue, membersValue, optionsValue] = await Promise.all([
-        publicClient.readContract({
+        withTransientRpcRetry(() => publicClient.readContract({
           address: fairCircleAddress,
           abi: fairCircleAbi,
           functionName: "getRoom",
           args: [roomId],
-        }),
-        publicClient.readContract({
+        })),
+        withTransientRpcRetry(() => publicClient.readContract({
           address: fairCircleAddress,
           abi: fairCircleAbi,
           functionName: "getMembers",
           args: [roomId],
-        }),
-        publicClient.readContract({
+        })),
+        withTransientRpcRetry(() => publicClient.readContract({
           address: fairCircleAddress,
           abi: fairCircleAbi,
           functionName: "getOptions",
           args: [roomId],
-        }),
+        })),
       ]);
 
       if (requestRef.current !== requestId) {
@@ -90,30 +91,30 @@ export function useQuietBudgetRoom({
       const options = (optionsValue as bigint[]).map((value) => BigInt(value));
       const publicAffordability = await Promise.all(
         options.map((_, index) =>
-          publicClient.readContract({
+          withTransientRpcRetry(() => publicClient.readContract({
             address: fairCircleAddress,
             abi: fairCircleAbi,
             functionName: "getPublicAffordability",
             args: [roomId, BigInt(index)],
-          }).then(normalizePublicAffordability),
+          })).then(normalizePublicAffordability),
         ),
       );
 
       const normalizedAccount = account ? getAddress(account) : undefined;
       const [isMemberValue, hasSubmittedValue] = normalizedAccount
         ? await Promise.all([
-            publicClient.readContract({
+            withTransientRpcRetry(() => publicClient.readContract({
               address: fairCircleAddress,
               abi: fairCircleAbi,
               functionName: "isMember",
               args: [roomId, normalizedAccount],
-            }),
-            publicClient.readContract({
+            })),
+            withTransientRpcRetry(() => publicClient.readContract({
               address: fairCircleAddress,
               abi: fairCircleAbi,
               functionName: "hasSubmitted",
               args: [roomId, normalizedAccount],
-            }),
+            })),
           ])
         : [false, false];
 

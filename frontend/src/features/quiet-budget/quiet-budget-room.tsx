@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { type Hex } from "viem";
 import { AppShell } from "@/components/app-shell";
@@ -17,6 +17,7 @@ import { TransactionStatus, type TransactionState } from "@/components/web3/tran
 import { WalletGuard } from "@/components/web3/wallet-guard";
 import { createBrowserNoxHandleClient } from "@/lib/nox/client";
 import { createFairCirclePublicClient, createFairCircleWalletClient } from "@/lib/web3/clients";
+import { withTransientRpcRetry } from "@/lib/web3/retry";
 import { shortAddress, useWallet } from "@/lib/web3/use-wallet";
 import { AffordabilityResults } from "./affordability-results";
 import { CapacitySubmission } from "./capacity-submission";
@@ -55,19 +56,26 @@ export function QuietBudgetRoom({ roomIdText }: QuietBudgetRoomProps) {
   const [cancelTxState, setCancelTxState] = useState<TransactionState>("idle");
   const [cancelTxHash, setCancelTxHash] = useState<Hex>();
   const [cancelTxError, setCancelTxError] = useState<string>();
+  const sessionKey = `${wallet.address ?? ""}:${wallet.chainId ?? ""}:${roomIdText}`;
+  const sessionKeyRef = useRef(sessionKey);
 
   useEffect(() => {
+    sessionKeyRef.current = sessionKey;
     const timer = window.setTimeout(() => {
       setRevealedCapacity(undefined);
       setRevealError(undefined);
       setCancelTxState("idle");
       setCancelTxHash(undefined);
       setCancelTxError(undefined);
+      setSessionTxs([]);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [wallet.address, wallet.chainId, roomIdText]);
+  }, [sessionKey]);
 
   function addSessionTx(label: string, hash: Hex) {
+    if (sessionKeyRef.current !== sessionKey) {
+      return;
+    }
     setSessionTxs((current) => [{ label, hash }, ...current.filter((item) => item.hash !== hash)]);
   }
 
@@ -86,13 +94,13 @@ export function QuietBudgetRoom({ roomIdText }: QuietBudgetRoomProps) {
         account: wallet.address,
         chainId: wallet.chainId,
       });
-      const handle = await publicClient.readContract({
+      const handle = await withTransientRpcRetry(() => publicClient.readContract({
         address: fairCircleAddress,
         abi: fairCircleAbi,
         functionName: "getMyCapacityHandle",
         args: [roomId],
         account: wallet.address,
-      });
+      }));
       const decrypted = await handleClient.decrypt(handle as Hex);
       if (typeof decrypted.value !== "bigint") {
         throw new Error("The submitted amount could not be read as a whole-number amount.");
@@ -119,33 +127,47 @@ export function QuietBudgetRoom({ roomIdText }: QuietBudgetRoomProps) {
     if (!confirmed) {
       return;
     }
+    const operationSessionKey = sessionKey;
     try {
       setCancelTxState("preparing");
       setCancelTxError(undefined);
       setCancelTxHash(undefined);
       const publicClient = createFairCirclePublicClient();
       const walletClient = createFairCircleWalletClient(wallet.provider, wallet.address);
-      const simulation = await publicClient.simulateContract({
-        address: fairCircleAddress,
-        abi: fairCircleAbi,
-        functionName: "cancelRoom",
-        args: [roomId],
-        account: wallet.address,
-      });
+      const simulation = await withTransientRpcRetry(() => publicClient.simulateContract({
+          address: fairCircleAddress,
+          abi: fairCircleAbi,
+          functionName: "cancelRoom",
+          args: [roomId],
+          account: wallet.address,
+        }));
+      if (sessionKeyRef.current !== operationSessionKey) {
+        return;
+      }
       setCancelTxState("awaiting-wallet");
       const hash = await walletClient.writeContract(simulation.request);
       setCancelTxHash(hash);
       setCancelTxState("submitted");
       setCancelTxState("confirming");
-      const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+      const receipt = await withTransientRpcRetry(() => publicClient.waitForTransactionReceipt({ hash, confirmations: 1 }));
+      if (sessionKeyRef.current !== operationSessionKey) {
+        return;
+      }
       if (receipt.status !== "success") {
         throw new Error("The confirmed transaction was reverted.");
       }
       parseRoomCancelledReceipt(receipt, { roomId });
       setCancelTxState("confirmed");
       addSessionTx("Room cancelled", hash);
-      await roomState.refresh();
+      try {
+        await roomState.refresh();
+      } catch {
+        // The confirmed transaction remains successful even if the follow-up read is unavailable.
+      }
     } catch (error) {
+      if (sessionKeyRef.current !== operationSessionKey) {
+        return;
+      }
       setCancelTxState("failed");
       setCancelTxError(safeWeb3ErrorMessage(error));
     }

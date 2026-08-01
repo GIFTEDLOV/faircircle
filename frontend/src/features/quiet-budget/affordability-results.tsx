@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type Hex } from "viem";
 import { Card } from "@/components/ui/card";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { TransactionStatus, type TransactionState } from "@/components/web3/transaction-status";
 import { createBrowserNoxHandleClient } from "@/lib/nox/client";
 import { createFairCirclePublicClient, createFairCircleWalletClient } from "@/lib/web3/clients";
+import { withTransientRpcRetry } from "@/lib/web3/retry";
 import { useWallet } from "@/lib/web3/use-wallet";
 import {
   fairCircleAbi,
@@ -39,9 +40,24 @@ export function AffordabilityResults({
   const [txState, setTxState] = useState<TransactionState>("idle");
   const [txHash, setTxHash] = useState<Hex>();
   const [txError, setTxError] = useState<string>();
+  const [optimisticResults, setOptimisticResults] = useState<Record<number, boolean>>({});
+  const operationRef = useRef(0);
   const txActive = ["preparing", "awaiting-wallet", "submitted", "confirming"].includes(txState);
 
+  useEffect(() => {
+    operationRef.current += 1;
+    const timer = window.setTimeout(() => {
+      setActiveOption(undefined);
+      setTxState("idle");
+      setTxHash(undefined);
+      setTxError(undefined);
+      setOptimisticResults({});
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [roomId, wallet.address, wallet.chainId]);
+
   async function publish(index: number) {
+    const operation = operationRef.current;
     if (!wallet.provider || !wallet.address || !wallet.isSepolia) {
       setTxState("failed");
       setTxError("Connect a Sepolia wallet before publishing.");
@@ -59,41 +75,56 @@ export function AffordabilityResults({
         account: wallet.address,
         chainId: wallet.chainId,
       });
-      const handle = await publicClient.readContract({
+      const handle = await withTransientRpcRetry(() => publicClient.readContract({
         address: fairCircleAddress,
         abi: fairCircleAbi,
         functionName: "getAffordabilityHandle",
         args: [roomId, BigInt(index)],
-      });
+      }));
       const decrypted = await handleClient.publicDecrypt(handle as Hex);
       if (typeof decrypted.value !== "boolean") {
         throw new Error("The published result was not a valid true-or-false value.");
       }
-      const simulation = await publicClient.simulateContract({
-        address: fairCircleAddress,
-        abi: fairCircleAbi,
-        functionName: "finalizeAffordability",
-        args: [roomId, BigInt(index), decrypted.decryptionProof as Hex],
-        account: wallet.address,
-      });
+      const affordable = decrypted.value as boolean;
+      if (operation !== operationRef.current) {
+        return;
+      }
+      const simulation = await withTransientRpcRetry(() => publicClient.simulateContract({
+          address: fairCircleAddress,
+          abi: fairCircleAbi,
+          functionName: "finalizeAffordability",
+          args: [roomId, BigInt(index), decrypted.decryptionProof as Hex],
+          account: wallet.address,
+        }));
       setTxState("awaiting-wallet");
       const hash = await walletClient.writeContract(simulation.request);
       setTxHash(hash);
       setTxState("submitted");
       setTxState("confirming");
-      const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+      const receipt = await withTransientRpcRetry(() => publicClient.waitForTransactionReceipt({ hash, confirmations: 1 }));
+      if (operation !== operationRef.current) {
+        return;
+      }
       if (receipt.status !== "success") {
         throw new Error("The confirmed transaction was reverted.");
       }
       parseAffordabilityFinalizedReceipt(receipt, {
         roomId,
         optionIndex: index,
-        affordable: decrypted.value,
+        affordable,
       });
+      setOptimisticResults((current) => ({ ...current, [index]: affordable }));
       setTxState("confirmed");
       onConfirmed(`Published option ${index + 1}`, hash);
-      await onRefresh();
+      try {
+        await onRefresh();
+      } catch {
+        // The confirmed transaction remains successful even if the follow-up read is unavailable.
+      }
     } catch (error) {
+      if (operation !== operationRef.current) {
+        return;
+      }
       setTxState("failed");
       setTxError(safeWeb3ErrorMessage(error));
     }
@@ -110,7 +141,10 @@ export function AffordabilityResults({
       </div>
       <div className="space-y-3">
         {options.map((cost, index) => {
-          const result = results[index] ?? { finalized: false, affordable: false };
+          const published = optimisticResults[index];
+          const result = published === undefined
+            ? results[index] ?? { finalized: false, affordable: false }
+            : { finalized: true, affordable: published };
           return (
             <div
               key={index}

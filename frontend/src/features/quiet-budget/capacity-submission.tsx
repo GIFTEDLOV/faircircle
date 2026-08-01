@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type Hex } from "viem";
 import { Card } from "@/components/ui/card";
 import { InlineError } from "@/components/web3/inline-error";
 import { TransactionStatus, type TransactionState } from "@/components/web3/transaction-status";
 import { createBrowserNoxHandleClient } from "@/lib/nox/client";
 import { createFairCirclePublicClient, createFairCircleWalletClient } from "@/lib/web3/clients";
+import { withTransientRpcRetry } from "@/lib/web3/retry";
 import { useWallet } from "@/lib/web3/use-wallet";
 import {
   MAX_SUPPORTED_AMOUNT_FALLBACK,
@@ -42,15 +43,19 @@ export function CapacitySubmission({
   const [txState, setTxState] = useState<TransactionState>("idle");
   const [txHash, setTxHash] = useState<Hex>();
   const [txError, setTxError] = useState<string>();
+  const [optimisticSubmitted, setOptimisticSubmitted] = useState(false);
+  const operationRef = useRef(0);
   const [maxSupportedAmount, setMaxSupportedAmount] = useState(MAX_SUPPORTED_AMOUNT_FALLBACK);
   const [nowMs, setNowMs] = useState<number>();
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      operationRef.current += 1;
       setValue("");
       setTxState("idle");
       setTxHash(undefined);
       setTxError(undefined);
+      setOptimisticSubmitted(false);
     }, 0);
     return () => window.clearTimeout(timer);
   }, [wallet.address, wallet.chainId]);
@@ -67,11 +72,11 @@ export function CapacitySubmission({
 
   useEffect(() => {
     let cancelled = false;
-    createFairCirclePublicClient().readContract({
+    withTransientRpcRetry(() => createFairCirclePublicClient().readContract({
       address: fairCircleAddress,
       abi: fairCircleAbi,
       functionName: "MAX_SUPPORTED_AMOUNT",
-    }).then((result) => {
+    })).then((result) => {
       if (!cancelled) {
         setMaxSupportedAmount(BigInt(result as bigint));
       }
@@ -87,10 +92,12 @@ export function CapacitySubmission({
     isMember &&
     status === RoomStatus.CollectingInputs &&
     !deadlinePassed &&
-    !hasSubmitted;
+    !hasSubmitted &&
+    !optimisticSubmitted;
   const txActive = ["preparing", "awaiting-wallet", "submitted", "confirming"].includes(txState);
 
   async function submitCapacity() {
+    const operation = operationRef.current;
     const capacity = validateCapacity(value, maxSupportedAmount);
     if (!capacity.ok) {
       setTxState("failed");
@@ -114,28 +121,42 @@ export function CapacitySubmission({
         chainId: wallet.chainId,
       });
       const encrypted = await handleClient.encryptInput(capacity.value, "uint256", fairCircleAddress);
-      const simulation = await publicClient.simulateContract({
-        address: fairCircleAddress,
-        abi: fairCircleAbi,
-        functionName: "submitPrivateCapacity",
-        args: [roomId, encrypted.handle as Hex, encrypted.handleProof as Hex],
-        account: wallet.address,
-      });
+      if (operation !== operationRef.current) {
+        return;
+      }
+      const simulation = await withTransientRpcRetry(() => publicClient.simulateContract({
+          address: fairCircleAddress,
+          abi: fairCircleAbi,
+          functionName: "submitPrivateCapacity",
+          args: [roomId, encrypted.handle as Hex, encrypted.handleProof as Hex],
+          account: wallet.address,
+        }));
       setTxState("awaiting-wallet");
       const hash = await walletClient.writeContract(simulation.request);
       setTxHash(hash);
       setTxState("submitted");
       setTxState("confirming");
-      const receipt = await publicClient.waitForTransactionReceipt({ hash, confirmations: 1 });
+      const receipt = await withTransientRpcRetry(() => publicClient.waitForTransactionReceipt({ hash, confirmations: 1 }));
+      if (operation !== operationRef.current) {
+        return;
+      }
       if (receipt.status !== "success") {
         throw new Error("The confirmed transaction was reverted.");
       }
       parseCapacitySubmittedReceipt(receipt, { roomId, member: wallet.address });
       setValue("");
+      setOptimisticSubmitted(true);
       setTxState("confirmed");
       onConfirmed("Capacity submitted", hash);
-      await onRefresh();
+      try {
+        await onRefresh();
+      } catch {
+        // The confirmed transaction remains successful even if the follow-up read is unavailable.
+      }
     } catch (error) {
+      if (operation !== operationRef.current) {
+        return;
+      }
       setTxState("failed");
       setTxError(safeWeb3ErrorMessage(error));
     }
@@ -152,7 +173,7 @@ export function CapacitySubmission({
 
       {!isMember ? <InlineError message="Only listed members can submit a private capacity." /> : null}
       {deadlinePassed ? <InlineError message="The submission deadline has passed." /> : null}
-      {hasSubmitted ? <p className="text-sm font-medium text-emerald-700">This wallet has submitted.</p> : null}
+      {hasSubmitted || optimisticSubmitted ? <p className="text-sm font-medium text-emerald-700">This wallet has submitted.</p> : null}
 
       <form
         className="space-y-3"

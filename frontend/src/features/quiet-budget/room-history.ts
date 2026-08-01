@@ -2,7 +2,7 @@ import { getAddress, isAddress, type Abi, type Address } from "viem";
 import { fairCircleDeployment } from "@/generated/contracts";
 import { RoomMode } from "./room-status";
 
-export const ROOM_HISTORY_CHUNK_SIZE = 50_000n;
+export const ROOM_HISTORY_CHUNK_SIZE = 10_000n;
 export const ROOM_HISTORY_MAX_CHUNKS = 80;
 export const ROOM_HISTORY_MAX_ROOMS = 100;
 export const ROOM_HISTORY_MAX_RETRIES = 3;
@@ -48,6 +48,8 @@ export type RoomHistoryClient = {
   }) => Promise<unknown>;
 };
 
+export type RoomHistoryMode = typeof RoomMode.QuietBudget | typeof RoomMode.FairSplit;
+
 export type SerializedQuietBudgetRoom = {
   room: {
     id: string;
@@ -89,11 +91,26 @@ export async function discoverQuietBudgetRoomsForAccount({
   account: Address;
   delay?: (ms: number) => Promise<void>;
 }): Promise<RoomHistoryResult> {
+  return discoverRoomsForAccount({ client, account, mode: RoomMode.QuietBudget, delay });
+}
+
+export async function discoverRoomsForAccount({
+  client,
+  account,
+  mode,
+  delay = defaultDelay,
+}: {
+  client: RoomHistoryClient;
+  account: Address;
+  mode: RoomHistoryMode;
+  delay?: (ms: number) => Promise<void>;
+}): Promise<RoomHistoryResult> {
   const normalizedAccount = getAddress(account);
   const snapshotBlock = await client.getBlockNumber();
-  const roomIds = await scanQuietBudgetRoomIds({
+  const roomIds = await scanRoomIds({
     client,
     snapshotBlock,
+    mode,
     delay,
   });
   const rooms: SerializedQuietBudgetRoom[] = [];
@@ -122,7 +139,7 @@ export async function discoverQuietBudgetRoomsForAccount({
         }),
       ]);
       const room = normalizeServerRoomView(roomValue);
-      if (room.mode !== RoomMode.QuietBudget) {
+      if (room.mode !== mode) {
         continue;
       }
       const members = (membersValue as Address[]).map((member) => getAddress(member));
@@ -168,6 +185,20 @@ export async function scanQuietBudgetRoomIds({
   snapshotBlock: bigint;
   delay?: (ms: number) => Promise<void>;
 }) {
+  return scanRoomIds({ client, snapshotBlock, mode: RoomMode.QuietBudget, delay });
+}
+
+export async function scanRoomIds({
+  client,
+  snapshotBlock,
+  mode,
+  delay = defaultDelay,
+}: {
+  client: RoomHistoryClient;
+  snapshotBlock: bigint;
+  mode: RoomHistoryMode;
+  delay?: (ms: number) => Promise<void>;
+}) {
   const ids = new Set<bigint>();
   let fromBlock = roomHistoryDeploymentBlock;
   let chunkCount = 0;
@@ -196,9 +227,9 @@ export async function scanQuietBudgetRoomIds({
       delay,
     );
     for (const event of events) {
-      const mode = Number(event.args.mode);
+      const eventMode = Number(event.args.mode);
       const roomId = event.args.roomId;
-      if (mode === RoomMode.QuietBudget && roomId !== undefined) {
+      if (eventMode === mode && roomId !== undefined) {
         ids.add(BigInt(roomId as bigint));
       }
     }

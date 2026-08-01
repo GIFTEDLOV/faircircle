@@ -335,6 +335,49 @@ export const fairCircleDeployment = {
               "internalType": "uint256",
               "name": "roomId",
               "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "organizer",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCircle.SplitMethod",
+              "name": "splitMethod",
+              "type": "uint8"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint64",
+              "name": "submissionDeadline",
+              "type": "uint64"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint8",
+              "name": "memberCount",
+              "type": "uint8"
+            }
+          ],
+          "name": "FairSplitRoomCreated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
             }
           ],
           "name": "RoomCancelled",
@@ -400,6 +443,76 @@ export const fairCircleDeployment = {
             }
           ],
           "name": "RoomFinalized",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "SharesCalculated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "member",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint8",
+              "name": "submissionCount",
+              "type": "uint8"
+            }
+          ],
+          "name": "SplitCapacitySubmitted",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "feasible",
+              "type": "bool"
+            }
+          ],
+          "name": "SplitFeasibilityFinalized",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "SplitFeasibilityReady",
           "type": "event"
         },
         {
@@ -493,6 +606,45 @@ export const fairCircleDeployment = {
               "type": "address[]"
             },
             {
+              "internalType": "uint256",
+              "name": "totalCost",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint64",
+              "name": "submissionDeadline",
+              "type": "uint64"
+            },
+            {
+              "internalType": "enum FairCircle.SplitMethod",
+              "name": "splitMethod",
+              "type": "uint8"
+            }
+          ],
+          "name": "createFairSplitRoom",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "address[]",
+              "name": "members",
+              "type": "address[]"
+            },
+            {
               "internalType": "uint256[]",
               "name": "optionCosts",
               "type": "uint256[]"
@@ -538,6 +690,24 @@ export const fairCircleDeployment = {
             }
           ],
           "name": "finalizeAffordability",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "publicDecryptionProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "finalizeSplitFeasibility",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"
@@ -612,6 +782,44 @@ export const fairCircleDeployment = {
               "type": "uint256"
             }
           ],
+          "name": "getMyShareHandle",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getMySplitCapacityHandle",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
           "name": "getOptions",
           "outputs": [
             {
@@ -646,6 +854,30 @@ export const fairCircleDeployment = {
             {
               "internalType": "bool",
               "name": "affordable",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getPublicSplitFeasibility",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "finalized",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "feasible",
               "type": "bool"
             }
           ],
@@ -729,6 +961,63 @@ export const fairCircleDeployment = {
               "internalType": "uint256",
               "name": "roomId",
               "type": "uint256"
+            }
+          ],
+          "name": "getSplitFeasibilityHandle",
+          "outputs": [
+            {
+              "internalType": "ebool",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getSplitMethod",
+          "outputs": [
+            {
+              "internalType": "enum FairCircle.SplitMethod",
+              "name": "",
+              "type": "uint8"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getSplitTotalCost",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
             },
             {
               "internalType": "address",
@@ -790,6 +1079,25 @@ export const fairCircleDeployment = {
               "internalType": "uint256",
               "name": "roomId",
               "type": "uint256"
+            }
+          ],
+          "name": "sharesReady",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
             },
             {
               "internalType": "externalEuint256",
@@ -803,6 +1111,29 @@ export const fairCircleDeployment = {
             }
           ],
           "name": "submitPrivateCapacity",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "externalEuint256",
+              "name": "externalHandle",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "inputProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "submitSplitCapacity",
           "outputs": [],
           "stateMutability": "nonpayable",
           "type": "function"

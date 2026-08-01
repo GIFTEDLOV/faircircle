@@ -26,6 +26,18 @@ export function useQuietBudgetRooms({
   account?: Address;
   enabled: boolean;
 }) {
+  return useRoomHistoryRooms({ account, enabled, mode: "quiet-budget" });
+}
+
+export function useRoomHistoryRooms({
+  account,
+  enabled,
+  mode,
+}: {
+  account?: Address;
+  enabled: boolean;
+  mode: "quiet-budget" | "fair-split";
+}) {
   const [state, setState] = useState<RoomsState>({ status: "idle", rooms: [] });
   const requestRef = useRef(0);
   const abortRef = useRef<AbortController | undefined>(undefined);
@@ -47,7 +59,7 @@ export function useQuietBudgetRooms({
     setState((current) => ({ status: "loading", rooms: current.rooms }));
 
     try {
-      const response = await fetch(`/api/quiet-budget/rooms?account=${normalizedAccount}`, {
+      const response = await fetch(`/api/quiet-budget/rooms?account=${normalizedAccount}&mode=${mode}`, {
         method: "GET",
         signal: controller.signal,
         headers: { accept: "application/json" },
@@ -85,7 +97,7 @@ export function useQuietBudgetRooms({
           : "Room history could not be loaded. Try again.",
       });
     }
-  }, [account, enabled]);
+  }, [account, enabled, mode]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void refresh(), 0);

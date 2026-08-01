@@ -2,11 +2,12 @@ import { NextResponse, type NextRequest } from "next/server";
 import { MissingServerRpcError, createServerSepoliaPublicClient } from "@/lib/web3/server-public-client";
 import {
   RoomHistoryError,
-  discoverQuietBudgetRoomsForAccount,
+  discoverRoomsForAccount,
   normalizeRoomHistoryAccount,
   roomHistoryClientMessage,
   sanitizeRoomHistoryDiagnostic,
 } from "@/features/quiet-budget/room-history";
+import { RoomMode } from "@/features/quiet-budget/room-status";
 
 export const dynamic = "force-dynamic";
 
@@ -30,8 +31,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const account = normalizeRoomHistoryAccount(request.nextUrl.searchParams.get("account"));
+    const mode = normalizeRoomHistoryMode(request.nextUrl.searchParams.get("mode"));
     const client = createServerSepoliaPublicClient();
-    const result = await discoverQuietBudgetRoomsForAccount({ client, account });
+    const result = await discoverRoomsForAccount({ client, account, mode });
     return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     if (error instanceof MissingServerRpcError) {
@@ -44,6 +46,13 @@ export async function GET(request: NextRequest) {
     logSanitizedDiagnostic(error);
     return jsonError(new RoomHistoryError("FAILED", roomHistoryClientMessage(error), 502));
   }
+}
+
+function normalizeRoomHistoryMode(value: string | null) {
+  if (value === "fair-split") {
+    return RoomMode.FairSplit;
+  }
+  return RoomMode.QuietBudget;
 }
 
 function jsonError(error: RoomHistoryError) {

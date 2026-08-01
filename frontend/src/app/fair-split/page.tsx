@@ -1,6 +1,5 @@
-import { ModePage } from "@/components/mode-page";
-import { getMode } from "@/lib/content";
+import { FairSplitList } from "@/features/fair-split/fair-split-list";
 
 export default function FairSplitPage() {
-  return <ModePage mode={getMode("fair-split")} />;
+  return <FairSplitList />;
 }
