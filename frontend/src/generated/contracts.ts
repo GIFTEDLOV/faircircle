@@ -48,6 +48,54 @@ export const fairCircleDeployment = {
           "inputs": [
             {
               "internalType": "address",
+              "name": "owner",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "spender",
+              "type": "address"
+            }
+          ],
+          "name": "allowance",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "spender",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "value",
+              "type": "uint256"
+            }
+          ],
+          "name": "approve",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "",
+              "type": "bool"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
               "name": "account",
               "type": "address"
             }
@@ -74,6 +122,24 @@ export const fairCircleDeployment = {
             }
           ],
           "stateMutability": "pure",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            }
+          ],
+          "name": "mint",
+          "outputs": [],
+          "stateMutability": "nonpayable",
           "type": "function"
         },
         {
@@ -199,6 +265,69 @@ export const fairCircleDeployment = {
           "type": "function"
         },
         {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "euint256",
+              "name": "amount",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            }
+          ],
+          "name": "confidentialTransferAndCall",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "transferred",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "externalEuint256",
+              "name": "encryptedAmount",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "inputProof",
+              "type": "bytes"
+            },
+            {
+              "internalType": "bytes",
+              "name": "data",
+              "type": "bytes"
+            }
+          ],
+          "name": "confidentialTransferAndCall",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "transferred",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
           "inputs": [],
           "name": "decimals",
           "outputs": [
@@ -209,6 +338,24 @@ export const fairCircleDeployment = {
             }
           ],
           "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "euint256",
+              "name": "unwrapRequestId",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "decryptedAmountAndProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "finalizeUnwrap",
+          "outputs": [],
+          "stateMutability": "nonpayable",
           "type": "function"
         },
         {
@@ -248,6 +395,93 @@ export const fairCircleDeployment = {
             }
           ],
           "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "externalEuint256",
+              "name": "encryptedAmount",
+              "type": "bytes32"
+            },
+            {
+              "internalType": "bytes",
+              "name": "inputProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "unwrap",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "from",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "euint256",
+              "name": "amount",
+              "type": "bytes32"
+            }
+          ],
+          "name": "unwrap",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "address",
+              "name": "to",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "amount",
+              "type": "uint256"
+            }
+          ],
+          "name": "wrap",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "nonpayable",
           "type": "function"
         }
       ]
@@ -337,6 +571,156 @@ export const fairCircleDeployment = {
               "type": "uint256"
             },
             {
+              "indexed": true,
+              "internalType": "uint64",
+              "name": "version",
+              "type": "uint64"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "reached",
+              "type": "bool"
+            }
+          ],
+          "name": "CollectionTargetFinalized",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint64",
+              "name": "version",
+              "type": "uint64"
+            }
+          ],
+          "name": "CollectionTargetReady",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            }
+          ],
+          "name": "CollectionWithdrawalRequested",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            }
+          ],
+          "name": "CollectionWithdrawn",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "contributionId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "contributor",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "accepted",
+              "type": "bool"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "verifiedContributionCount",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint256",
+              "name": "uniqueContributorCount",
+              "type": "uint256"
+            }
+          ],
+          "name": "ContributionFinalized",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "contributionId",
+              "type": "uint256"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "contributor",
+              "type": "address"
+            }
+          ],
+          "name": "ContributionReceived",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
               "indexed": false,
               "internalType": "string",
               "name": "title",
@@ -368,6 +752,74 @@ export const fairCircleDeployment = {
             }
           ],
           "name": "FairSplitRoomCreated",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "PrivateCircleClosed",
+          "type": "event"
+        },
+        {
+          "anonymous": false,
+          "inputs": [
+            {
+              "indexed": true,
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "indexed": false,
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "organizer",
+              "type": "address"
+            },
+            {
+              "indexed": true,
+              "internalType": "address",
+              "name": "confidentialToken",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "indexed": false,
+              "internalType": "enum FairCircle.CollectionAccess",
+              "name": "access",
+              "type": "uint8"
+            },
+            {
+              "indexed": false,
+              "internalType": "uint64",
+              "name": "deadline",
+              "type": "uint64"
+            },
+            {
+              "indexed": false,
+              "internalType": "bool",
+              "name": "hasTarget",
+              "type": "bool"
+            }
+          ],
+          "name": "PrivateCircleCreated",
           "type": "event"
         },
         {
@@ -596,6 +1048,19 @@ export const fairCircleDeployment = {
         {
           "inputs": [
             {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "closePrivateCircle",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
               "internalType": "string",
               "name": "title",
               "type": "string"
@@ -622,6 +1087,55 @@ export const fairCircleDeployment = {
             }
           ],
           "name": "createFairSplitRoom",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "string",
+              "name": "title",
+              "type": "string"
+            },
+            {
+              "internalType": "address",
+              "name": "confidentialToken",
+              "type": "address"
+            },
+            {
+              "internalType": "address",
+              "name": "recipient",
+              "type": "address"
+            },
+            {
+              "internalType": "uint256",
+              "name": "publicTarget",
+              "type": "uint256"
+            },
+            {
+              "internalType": "uint64",
+              "name": "deadline",
+              "type": "uint64"
+            },
+            {
+              "internalType": "enum FairCircle.CollectionAccess",
+              "name": "access",
+              "type": "uint8"
+            },
+            {
+              "internalType": "address[]",
+              "name": "invitedMembers",
+              "type": "address[]"
+            }
+          ],
+          "name": "createPrivateCircleRoom",
           "outputs": [
             {
               "internalType": "uint256",
@@ -707,6 +1221,60 @@ export const fairCircleDeployment = {
               "type": "bytes"
             }
           ],
+          "name": "finalizeCollectionTarget",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "publicDecryptionProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "finalizeCollectionWithdrawal",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "contributionId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "publicDecryptionProof",
+              "type": "bytes"
+            }
+          ],
+          "name": "finalizeContribution",
+          "outputs": [],
+          "stateMutability": "nonpayable",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            },
+            {
+              "internalType": "bytes",
+              "name": "publicDecryptionProof",
+              "type": "bytes"
+            }
+          ],
           "name": "finalizeSplitFeasibility",
           "outputs": [],
           "stateMutability": "nonpayable",
@@ -726,6 +1294,109 @@ export const fairCircleDeployment = {
             }
           ],
           "name": "getAffordabilityHandle",
+          "outputs": [
+            {
+              "internalType": "ebool",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getCollectionAggregateHandle",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getCollectionTargetHandle",
+          "outputs": [
+            {
+              "internalType": "ebool",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "contributionId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getContribution",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "roomId",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "address",
+                  "name": "contributor",
+                  "type": "address"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "finalized",
+                  "type": "bool"
+                },
+                {
+                  "internalType": "bool",
+                  "name": "accepted",
+                  "type": "bool"
+                }
+              ],
+              "internalType": "struct FairCircle.ContributionView",
+              "name": "",
+              "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "contributionId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getContributionPositivityHandle",
           "outputs": [
             {
               "internalType": "ebool",
@@ -764,6 +1435,44 @@ export const fairCircleDeployment = {
             }
           ],
           "name": "getMyCapacityHandle",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "contributionId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getMyContributionHandle",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getMyCumulativeContributionHandle",
           "outputs": [
             {
               "internalType": "euint256",
@@ -837,6 +1546,87 @@ export const fairCircleDeployment = {
               "internalType": "uint256",
               "name": "roomId",
               "type": "uint256"
+            }
+          ],
+          "name": "getPrivateCircle",
+          "outputs": [
+            {
+              "components": [
+                {
+                  "internalType": "uint256",
+                  "name": "id",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "string",
+                  "name": "title",
+                  "type": "string"
+                },
+                {
+                  "internalType": "address",
+                  "name": "organizer",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "confidentialToken",
+                  "type": "address"
+                },
+                {
+                  "internalType": "address",
+                  "name": "recipient",
+                  "type": "address"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "publicTarget",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "deadline",
+                  "type": "uint64"
+                },
+                {
+                  "internalType": "enum FairCircle.CollectionAccess",
+                  "name": "access",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "enum FairCircle.CollectionStatus",
+                  "name": "collectionStatus",
+                  "type": "uint8"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "verifiedContributionCount",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint256",
+                  "name": "uniqueContributorCount",
+                  "type": "uint256"
+                },
+                {
+                  "internalType": "uint64",
+                  "name": "targetVersion",
+                  "type": "uint64"
+                }
+              ],
+              "internalType": "struct FairCircle.PrivateCircleView",
+              "name": "",
+              "type": "tuple"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
             },
             {
               "internalType": "uint256",
@@ -879,6 +1669,35 @@ export const fairCircleDeployment = {
               "internalType": "bool",
               "name": "feasible",
               "type": "bool"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getPublicTargetStatus",
+          "outputs": [
+            {
+              "internalType": "bool",
+              "name": "finalized",
+              "type": "bool"
+            },
+            {
+              "internalType": "bool",
+              "name": "reached",
+              "type": "bool"
+            },
+            {
+              "internalType": "uint64",
+              "name": "version",
+              "type": "uint64"
             }
           ],
           "stateMutability": "view",
@@ -1018,6 +1837,44 @@ export const fairCircleDeployment = {
               "internalType": "uint256",
               "name": "roomId",
               "type": "uint256"
+            }
+          ],
+          "name": "getWithdrawalHandle",
+          "outputs": [
+            {
+              "internalType": "euint256",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "getWithdrawalSuccessHandle",
+          "outputs": [
+            {
+              "internalType": "ebool",
+              "name": "",
+              "type": "bytes32"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
             },
             {
               "internalType": "address",
@@ -1062,6 +1919,19 @@ export const fairCircleDeployment = {
         },
         {
           "inputs": [],
+          "name": "nextContributionId",
+          "outputs": [
+            {
+              "internalType": "uint256",
+              "name": "",
+              "type": "uint256"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [],
           "name": "nextRoomId",
           "outputs": [
             {
@@ -1071,6 +1941,19 @@ export const fairCircleDeployment = {
             }
           ],
           "stateMutability": "view",
+          "type": "function"
+        },
+        {
+          "inputs": [
+            {
+              "internalType": "uint256",
+              "name": "roomId",
+              "type": "uint256"
+            }
+          ],
+          "name": "requestCollectionWithdrawal",
+          "outputs": [],
+          "stateMutability": "nonpayable",
           "type": "function"
         },
         {

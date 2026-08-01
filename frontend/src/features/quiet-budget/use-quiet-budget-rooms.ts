@@ -11,7 +11,8 @@ export type QuietBudgetRoomSummary = {
   room: QuietBudgetRoomView;
   members: Address[];
   hasSubmitted: boolean;
-  role: "Organizer" | "Member" | "Organizer and member";
+  role: string;
+  privateCircle?: SerializedQuietBudgetRoom["privateCircle"];
 };
 
 type RoomsState =
@@ -36,7 +37,7 @@ export function useRoomHistoryRooms({
 }: {
   account?: Address;
   enabled: boolean;
-  mode: "quiet-budget" | "fair-split";
+  mode: "quiet-budget" | "fair-split" | "private-circle";
 }) {
   const [state, setState] = useState<RoomsState>({ status: "idle", rooms: [] });
   const requestRef = useRef(0);
@@ -138,6 +139,7 @@ export function normalizeRoomHistoryRoom(room: SerializedQuietBudgetRoom): Quiet
     members: room.members.map((member) => getAddress(member)),
     hasSubmitted: room.hasSubmitted,
     role: room.role,
+    privateCircle: room.privateCircle,
   };
 }
 

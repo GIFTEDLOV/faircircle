@@ -14,11 +14,11 @@ const artifactPaths = {
 
 const requiredAbiEntries = {
   TestUSD: {
-    functions: ["name", "symbol", "decimals", "balanceOf"],
+    functions: ["name", "symbol", "decimals", "balanceOf", "allowance", "approve", "mint"],
     events: ["Transfer"],
   },
   FairCircleUSD: {
-    functions: ["name", "symbol", "decimals", "underlying", "confidentialBalanceOf"],
+    functions: ["name", "symbol", "decimals", "underlying", "confidentialBalanceOf", "wrap", "confidentialTransferAndCall", "unwrap", "finalizeUnwrap"],
     events: ["ConfidentialTransfer", "UnwrapRequested", "UnwrapFinalized"],
   },
   FairCircle: {
@@ -51,6 +51,23 @@ const requiredAbiEntries = {
       "MIN_OPTIONS",
       "MAX_OPTIONS",
       "MAX_SUPPORTED_AMOUNT",
+      "createPrivateCircleRoom",
+      "closePrivateCircle",
+      "requestCollectionWithdrawal",
+      "finalizeCollectionWithdrawal",
+      "finalizeContribution",
+      "finalizeCollectionTarget",
+      "getPrivateCircle",
+      "getContribution",
+      "getContributionPositivityHandle",
+      "getMyContributionHandle",
+      "getMyCumulativeContributionHandle",
+      "getCollectionAggregateHandle",
+      "getCollectionTargetHandle",
+      "getPublicTargetStatus",
+      "getWithdrawalHandle",
+      "getWithdrawalSuccessHandle",
+      "nextContributionId",
     ],
     events: [
       "RoomCreated",
@@ -64,6 +81,14 @@ const requiredAbiEntries = {
       "SplitFeasibilityReady",
       "SplitFeasibilityFinalized",
       "SharesCalculated",
+      "PrivateCircleCreated",
+      "ContributionReceived",
+      "ContributionFinalized",
+      "CollectionTargetReady",
+      "CollectionTargetFinalized",
+      "PrivateCircleClosed",
+      "CollectionWithdrawalRequested",
+      "CollectionWithdrawn",
     ],
   },
   FairCirclePlanTogether: {

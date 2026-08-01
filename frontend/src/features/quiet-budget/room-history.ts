@@ -36,19 +36,19 @@ export type RoomHistoryClient = {
   getContractEvents: (args: {
     address: Address;
     abi: Abi;
-    eventName: "RoomCreated";
+    eventName: "RoomCreated" | "PrivateCircleCreated" | "ContributionReceived";
     fromBlock: bigint;
     toBlock: bigint;
   }) => Promise<Array<{ args: Record<string, unknown> }>>;
   readContract: (args: {
     address: Address;
     abi: Abi;
-    functionName: "getRoom" | "getMembers" | "hasSubmitted";
+    functionName: "getRoom" | "getMembers" | "hasSubmitted" | "getPrivateCircle";
     args: readonly unknown[];
   }) => Promise<unknown>;
 };
 
-export type RoomHistoryMode = typeof RoomMode.QuietBudget | typeof RoomMode.FairSplit;
+export type RoomHistoryMode = typeof RoomMode.QuietBudget | typeof RoomMode.FairSplit | typeof RoomMode.PrivateCircle;
 
 export type SerializedQuietBudgetRoom = {
   room: {
@@ -65,7 +65,8 @@ export type SerializedQuietBudgetRoom = {
   };
   members: Address[];
   hasSubmitted: boolean;
-  role: "Organizer" | "Member" | "Organizer and member";
+  role: string;
+  privateCircle?: { recipient: Address; access: number; collectionStatus: number; publicTarget: string; verifiedContributionCount: string; uniqueContributorCount: string; targetVersion: string };
 };
 
 export type RoomHistoryResult = {
@@ -113,12 +114,15 @@ export async function discoverRoomsForAccount({
     mode,
     delay,
   });
+  const contributedRoomIds = mode === RoomMode.PrivateCircle
+    ? await scanContributionRoomIdsForAccount({ client, snapshotBlock, account: normalizedAccount, delay })
+    : new Set<bigint>();
   const rooms: SerializedQuietBudgetRoom[] = [];
   let readFailureCount = 0;
 
   for (const roomId of roomIds) {
     try {
-      const [roomValue, membersValue, hasSubmittedValue] = await Promise.all([
+      const reads: Promise<unknown>[] = [
         client.readContract({
           address: roomHistoryFairCircleAddress,
           abi: roomHistoryFairCircleAbi,
@@ -137,26 +141,28 @@ export async function discoverRoomsForAccount({
           functionName: "hasSubmitted",
           args: [roomId, normalizedAccount],
         }),
-      ]);
+      ];
+      if (mode === RoomMode.PrivateCircle) reads.push(client.readContract({ address: roomHistoryFairCircleAddress, abi: roomHistoryFairCircleAbi, functionName: "getPrivateCircle", args: [roomId] }));
+      const [roomValue, membersValue, hasSubmittedValue, privateValue] = await Promise.all(reads);
       const room = normalizeServerRoomView(roomValue);
       if (room.mode !== mode) {
         continue;
       }
       const members = (membersValue as Address[]).map((member) => getAddress(member));
       const isOrganizer = getAddress(room.organizer) === normalizedAccount;
+      const privateView = mode === RoomMode.PrivateCircle ? privateValue as { recipient: Address; access: number; collectionStatus: number; publicTarget: bigint; verifiedContributionCount: bigint; uniqueContributorCount: bigint; targetVersion: bigint } : undefined;
       const isMember = members.some((member) => getAddress(member) === normalizedAccount);
-      if (!isOrganizer && !isMember) {
+      const isRecipient = privateView ? getAddress(privateView.recipient) === normalizedAccount : false;
+      const isContributor = contributedRoomIds.has(roomId);
+      if (!isOrganizer && !isMember && !isRecipient && !isContributor) {
         continue;
       }
       rooms.push({
         room,
         members,
         hasSubmitted: Boolean(hasSubmittedValue),
-        role: isOrganizer && isMember
-          ? "Organizer and member"
-          : isOrganizer
-            ? "Organizer"
-            : "Member",
+        role: isOrganizer && isMember ? "Organizer and member" : isOrganizer ? "Organizer" : isRecipient && isMember ? "Recipient and member" : isRecipient && isContributor ? "Recipient and contributor" : isRecipient ? "Recipient" : isMember && isContributor ? "Member and contributor" : isMember ? "Member" : "Contributor",
+        privateCircle: privateView ? { recipient: getAddress(privateView.recipient), access: Number(privateView.access), collectionStatus: Number(privateView.collectionStatus), publicTarget: BigInt(privateView.publicTarget).toString(), verifiedContributionCount: BigInt(privateView.verifiedContributionCount).toString(), uniqueContributorCount: BigInt(privateView.uniqueContributorCount).toString(), targetVersion: BigInt(privateView.targetVersion).toString() } : undefined,
       });
       if (rooms.length >= ROOM_HISTORY_MAX_ROOMS) {
         break;
@@ -174,6 +180,18 @@ export async function discoverRoomsForAccount({
       ? "Some rooms could not be refreshed from the room-history provider."
       : undefined,
   };
+}
+
+async function scanContributionRoomIdsForAccount({ client, snapshotBlock, account, delay }: { client: RoomHistoryClient; snapshotBlock: bigint; account: Address; delay: (ms: number) => Promise<void> }) {
+  const ids = new Set<bigint>(); let fromBlock = roomHistoryDeploymentBlock; let chunks = 0;
+  while (fromBlock <= snapshotBlock) {
+    chunks += 1; if (chunks > ROOM_HISTORY_MAX_CHUNKS) throw new RoomHistoryError("TOO_MUCH_HISTORY", "Room history is too large to scan in one request.", 413);
+    const toBlock = fromBlock + ROOM_HISTORY_CHUNK_SIZE - 1n > snapshotBlock ? snapshotBlock : fromBlock + ROOM_HISTORY_CHUNK_SIZE - 1n;
+    const events = await withRoomHistoryRetry(() => client.getContractEvents({ address: roomHistoryFairCircleAddress, abi: roomHistoryFairCircleAbi, eventName: "ContributionReceived", fromBlock, toBlock }), delay);
+    for (const event of events) if (event.args.contributor && getAddress(event.args.contributor as Address) === account) ids.add(BigInt(event.args.roomId as bigint));
+    fromBlock = toBlock + 1n;
+  }
+  return ids;
 }
 
 export async function scanQuietBudgetRoomIds({
@@ -220,14 +238,14 @@ export async function scanRoomIds({
         client.getContractEvents({
           address: roomHistoryFairCircleAddress,
           abi: roomHistoryFairCircleAbi,
-          eventName: "RoomCreated",
+          eventName: mode === RoomMode.PrivateCircle ? "PrivateCircleCreated" : "RoomCreated",
           fromBlock,
           toBlock,
         }),
       delay,
     );
     for (const event of events) {
-      const eventMode = Number(event.args.mode);
+      const eventMode = mode === RoomMode.PrivateCircle ? RoomMode.PrivateCircle : Number(event.args.mode);
       const roomId = event.args.roomId;
       if (eventMode === mode && roomId !== undefined) {
         ids.add(BigInt(roomId as bigint));

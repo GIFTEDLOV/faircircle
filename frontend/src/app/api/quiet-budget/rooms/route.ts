@@ -52,6 +52,9 @@ function normalizeRoomHistoryMode(value: string | null) {
   if (value === "fair-split") {
     return RoomMode.FairSplit;
   }
+  if (value === "private-circle") {
+    return RoomMode.PrivateCircle;
+  }
   return RoomMode.QuietBudget;
 }
 

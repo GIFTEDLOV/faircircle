@@ -1,6 +1,2 @@
-import { ModePage } from "@/components/mode-page";
-import { getMode } from "@/lib/content";
-
-export default function PrivateCirclePage() {
-  return <ModePage mode={getMode("private-circle")} />;
-}
+import { PrivateCircleList } from "@/features/private-circle/private-circle-list";
+export default function PrivateCirclePage() { return <PrivateCircleList />; }
